@@ -3,6 +3,7 @@ import { advanceRoom, submitStealVote } from '@/lib/game-engine'
 import { stealVoteSchema } from '@/lib/api-schemas'
 import { apiError } from '@/lib/api-response'
 import { getPlayerTokenFromRequest, requireAuthorizedPlayer, enforceRateLimit, enforceSameOrigin } from '@/lib/api-auth'
+import { broadcastState } from '@/lib/room-manager'
 
 export async function POST(
   request: Request,
@@ -33,5 +34,6 @@ export async function POST(
     return apiError('Vote failed', 400, rateLimit.headers)
   }
 
+  await broadcastState(roomId)
   return NextResponse.json({ ok: true }, { headers: rateLimit.headers })
 }

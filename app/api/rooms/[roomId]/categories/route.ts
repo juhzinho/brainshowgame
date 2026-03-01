@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getRoom, sanitizeCategories, setRoomCategories } from '@/lib/room-manager'
+import { broadcastState, getRoom, sanitizeCategories, setRoomCategories } from '@/lib/room-manager'
 import { categoriesSchema } from '@/lib/api-schemas'
 import { apiError } from '@/lib/api-response'
 import { auditLog } from '@/lib/audit'
@@ -43,6 +43,7 @@ export async function POST(
   }
 
   await setRoomCategories(roomId, sanitizedCategories)
+  await broadcastState(roomId)
   auditLog({
     event: 'room_categories_updated',
     roomId,

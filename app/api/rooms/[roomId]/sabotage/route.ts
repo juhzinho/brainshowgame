@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { applySabotage } from '@/lib/room-manager'
+import { applySabotage, broadcastState } from '@/lib/room-manager'
 import type { SabotageType } from '@/lib/game-state'
 import { sabotageSchema } from '@/lib/api-schemas'
 import { apiError } from '@/lib/api-response'
@@ -40,6 +40,7 @@ export async function POST(
     return apiError('Nao foi possivel aplicar sabotagem', 400, rateLimit.headers)
   }
 
+  await broadcastState(roomId)
   await advanceRoom(roomId)
   return NextResponse.json({ success: true }, { headers: rateLimit.headers })
 }

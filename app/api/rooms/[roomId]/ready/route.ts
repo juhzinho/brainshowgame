@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { setPlayerReady } from '@/lib/room-manager'
+import { broadcastState, setPlayerReady } from '@/lib/room-manager'
 import { playerAuthSchema } from '@/lib/api-schemas'
 import { apiError } from '@/lib/api-response'
 import { getPlayerTokenFromRequest, requireAuthorizedPlayer, enforceRateLimit, enforceSameOrigin } from '@/lib/api-auth'
@@ -33,6 +33,7 @@ export async function POST(
     return apiError('Nao foi possivel marcar como pronto', 400, rateLimit.headers)
   }
 
+  await broadcastState(roomId)
   await advanceRoom(roomId)
   return NextResponse.json({ success: true }, { headers: rateLimit.headers })
 }

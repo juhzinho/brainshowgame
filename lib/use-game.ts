@@ -15,7 +15,47 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
     return headers
   }, [playerToken])
 
-  // Poll for game state instead of SSE (more reliable)
+  // Live updates via SSE for instant reactions to answers, sabotages and phase changes.
+  useEffect(() => {
+    if (!roomId || !playerId || !playerToken) return
+
+    const params = new URLSearchParams({
+      playerId,
+      playerToken,
+    })
+
+    const eventSource = new EventSource(`/api/rooms/${roomId}/events?${params.toString()}`)
+
+    eventSource.onopen = () => {
+      store.setConnected(true)
+    }
+
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data) as {
+          type?: string
+          data?: Record<string, unknown>
+        }
+
+        if (payload.type === 'state-update' && payload.data) {
+          store.setConnected(true)
+          store.updateGameState(payload.data)
+        }
+      } catch {
+        // ignore malformed events
+      }
+    }
+
+    eventSource.onerror = () => {
+      store.setConnected(false)
+    }
+
+    return () => {
+      eventSource.close()
+    }
+  }, [roomId, playerId, playerToken, store])
+
+  // Poll as a fallback and to advance timer-driven phases in serverless runtime.
   useEffect(() => {
     if (!roomId || !playerId || !playerToken) return
 
@@ -42,14 +82,14 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
           store.setConnected(true)
           store.updateGameState(data)
           
-          // Adaptive polling: faster during active gameplay, slower during waiting
+          // Keep active phases moving, but let SSE handle most UI freshness.
           const phase = data.phase || 'waiting'
           const isActive = ['answering', 'steal-vote', 'counter-attack'].includes(phase)
           const isWaiting = phase === 'waiting' || phase === 'finished'
-          const nextDelay = isActive ? 400 : isWaiting ? 1500 : 700
+          const nextDelay = isActive ? 1000 : isWaiting ? 4000 : 1500
           scheduleNext(nextDelay)
         } else {
-          scheduleNext(700)
+          scheduleNext(1500)
         }
       } catch {
         if (active) store.setConnected(false)
