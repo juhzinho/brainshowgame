@@ -15,43 +15,28 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
     return headers
   }, [playerToken])
 
-  // Live updates via SSE for instant reactions to answers, sabotages and phase changes.
-  useEffect(() => {
+  const refreshGameState = useCallback(async () => {
     if (!roomId || !playerId || !playerToken) return
 
-    const params = new URLSearchParams({
-      playerId,
-      playerToken,
-    })
+    try {
+      const res = await fetch(`/api/rooms/${roomId}?playerId=${playerId}`, {
+        headers: playerToken ? { 'x-player-token': playerToken } : undefined,
+        cache: 'no-store',
+      })
 
-    const eventSource = new EventSource(`/api/rooms/${roomId}/events?${params.toString()}`)
-
-    eventSource.onopen = () => {
-      store.setConnected(true)
-    }
-
-    eventSource.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data) as {
-          type?: string
-          data?: Record<string, unknown>
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 404) {
+          store.reset()
+          return
         }
-
-        if (payload.type === 'state-update' && payload.data) {
-          store.setConnected(true)
-          store.updateGameState(payload.data)
-        }
-      } catch {
-        // ignore malformed events
+        return
       }
-    }
 
-    eventSource.onerror = () => {
+      const data = await res.json()
+      store.setConnected(true)
+      store.updateGameState(data)
+    } catch {
       store.setConnected(false)
-    }
-
-    return () => {
-      eventSource.close()
     }
   }, [roomId, playerId, playerToken, store])
 
@@ -74,7 +59,7 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
             store.reset()
             return
           }
-          scheduleNext(1000)
+          scheduleNext(1200)
           return
         }
         const data = await res.json()
@@ -82,14 +67,13 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
           store.setConnected(true)
           store.updateGameState(data)
           
-          // Keep active phases moving, but let SSE handle most UI freshness.
           const phase = data.phase || 'waiting'
           const isActive = ['answering', 'steal-vote', 'counter-attack'].includes(phase)
           const isWaiting = phase === 'waiting' || phase === 'finished'
-          const nextDelay = isActive ? 1000 : isWaiting ? 4000 : 1500
+          const nextDelay = isActive ? 650 : isWaiting ? 2500 : 1200
           scheduleNext(nextDelay)
         } else {
-          scheduleNext(1500)
+          scheduleNext(1200)
         }
       } catch {
         if (active) store.setConnected(false)
@@ -124,10 +108,11 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken, answerIndex }),
       })
+      await refreshGameState()
     } catch {
       // ignore
     }
-  }, [roomId, playerId, playerToken, buildHeaders, store])
+  }, [roomId, playerId, playerToken, buildHeaders, refreshGameState, store])
 
   // Send sabotage
   const sendSabotage = useCallback(async (targetPlayerId: string, sabotageType: SabotageType) => {
@@ -138,10 +123,11 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken, targetPlayerId, sabotageType }),
       })
+      await refreshGameState()
     } catch {
       // ignore
     }
-  }, [roomId, playerId, playerToken, buildHeaders])
+  }, [roomId, playerId, playerToken, buildHeaders, refreshGameState])
 
   // Start game
   const startGame = useCallback(async () => {
@@ -152,10 +138,11 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken }),
       })
+      await refreshGameState()
     } catch {
       // ignore
     }
-  }, [roomId, playerId, playerToken, buildHeaders])
+  }, [roomId, playerId, playerToken, buildHeaders, refreshGameState])
 
   // Mark ready
   const markReady = useCallback(async () => {
@@ -166,10 +153,11 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken }),
       })
+      await refreshGameState()
     } catch {
       // ignore
     }
-  }, [roomId, playerId, playerToken, buildHeaders])
+  }, [roomId, playerId, playerToken, buildHeaders, refreshGameState])
 
   // Set categories
   const setCategories = useCallback(async (categories: string[]) => {
@@ -180,10 +168,11 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken, categories }),
       })
+      await refreshGameState()
     } catch {
       // ignore
     }
-  }, [roomId, playerId, playerToken, buildHeaders])
+  }, [roomId, playerId, playerToken, buildHeaders, refreshGameState])
 
   // Submit steal vote
   const submitStealVote = useCallback(async (targetId: string) => {
@@ -194,10 +183,11 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken, targetId }),
       })
+      await refreshGameState()
     } catch {
       // ignore
     }
-  }, [roomId, playerId, playerToken, buildHeaders])
+  }, [roomId, playerId, playerToken, buildHeaders, refreshGameState])
 
   // Submit counter-attack (card index)
   const submitCounterAttack = useCallback(async (cardIndex: number) => {
@@ -208,10 +198,11 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken, cardIndex }),
       })
+      await refreshGameState()
     } catch {
       // ignore
     }
-  }, [roomId, playerId, playerToken, buildHeaders])
+  }, [roomId, playerId, playerToken, buildHeaders, refreshGameState])
 
   // Restart game (keeps used question IDs to avoid repeats)
   const restartGame = useCallback(async () => {
@@ -222,10 +213,11 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken }),
       })
+      await refreshGameState()
     } catch {
       // ignore
     }
-  }, [roomId, playerId, playerToken, buildHeaders])
+  }, [roomId, playerId, playerToken, buildHeaders, refreshGameState])
 
   return {
     sendAnswer,
