@@ -125,7 +125,7 @@ export async function getPublicRoomState(roomId: string) {
   }
 }
 
-export async function createRoom(hostName: string): Promise<{ room: Room; playerId: string; playerToken: string }> {
+export async function createRoom(hostName: string, usedQuestionIds: string[] = []): Promise<{ room: Room; playerId: string; playerToken: string }> {
   const roomId = await generateUniqueRoomId()
   const playerId = crypto.randomUUID()
   const playerToken = generatePlayerToken()
@@ -166,7 +166,7 @@ export async function createRoom(hostName: string): Promise<{ room: Room; player
     hostAnimation: 'idle',
     eliminatedThisRound: [],
     selectedCategories: [],
-    usedQuestionIds: [],
+    usedQuestionIds: [...usedQuestionIds],
     stealVotes: {},
     stealVictimId: null,
     stolenPoints: 0,
@@ -388,6 +388,7 @@ export function buildClientState(room: Room) {
     roundType: roundConfig?.type || null,
     question: room.currentQuestion
       ? {
+          id: room.currentQuestion.id,
           text: room.currentQuestion.text,
           category: room.currentQuestion.category,
           options: room.currentQuestion.options,

@@ -3,6 +3,7 @@ const STORAGE_KEYS = {
   playerId: 'brainshow_playerId',
   playerName: 'brainshow_playerName',
   playerToken: 'brainshow_playerToken',
+  usedQuestionIds: 'brainshow_usedQuestionIds',
 } as const
 
 export interface StoredSession {
@@ -43,4 +44,36 @@ export function clearStoredSession(): void {
   sessionStorage.removeItem(STORAGE_KEYS.playerId)
   sessionStorage.removeItem(STORAGE_KEYS.playerName)
   sessionStorage.removeItem(STORAGE_KEYS.playerToken)
+}
+
+export function loadStoredQuestionHistory(): string[] {
+  if (typeof window === 'undefined') return []
+
+  const raw = localStorage.getItem(STORAGE_KEYS.usedQuestionIds)
+  if (!raw) return []
+
+  try {
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((entry): entry is string => typeof entry === 'string')
+  } catch {
+    return []
+  }
+}
+
+export function saveStoredQuestionHistory(questionIds: string[]): void {
+  if (typeof window === 'undefined') return
+
+  const sanitized = Array.from(
+    new Set(questionIds.filter((entry): entry is string => typeof entry === 'string'))
+  ).slice(-500)
+
+  localStorage.setItem(STORAGE_KEYS.usedQuestionIds, JSON.stringify(sanitized))
+}
+
+export function appendStoredQuestionHistory(questionId: string): void {
+  if (typeof window === 'undefined' || !questionId) return
+
+  const nextHistory = [...loadStoredQuestionHistory(), questionId]
+  saveStoredQuestionHistory(nextHistory)
 }

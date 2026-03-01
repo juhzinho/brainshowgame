@@ -3175,6 +3175,8 @@ const trueFalseQuestions: Question[] = [
   { id: 'tf30', category: 'Verdadeiro ou Falso', text: 'A lingua portuguesa e a mais falada da America do Sul.', options: ['Verdadeiro', 'Falso'], correctIndex: 0, difficulty: 'easy' },
 ]
 
+const allQuestionIds = new Set([...allQuestions, ...trueFalseQuestions].map((question) => question.id))
+
 export function getQuestionsForRound(
   type: string,
   count: number,
@@ -3267,4 +3269,16 @@ export function getQuestionCountByCategory(): Record<string, number> {
     counts[q.category] = (counts[q.category] || 0) + 1
   })
   return counts
+}
+
+export function sanitizeUsedQuestionIds(questionIds: unknown): string[] {
+  if (!Array.isArray(questionIds)) return []
+
+  return Array.from(
+    new Set(
+      questionIds
+        .filter((questionId): questionId is string => typeof questionId === 'string')
+        .filter((questionId) => allQuestionIds.has(questionId))
+    )
+  )
 }

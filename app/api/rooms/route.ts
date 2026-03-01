@@ -5,6 +5,7 @@ import { apiError } from '@/lib/api-response'
 import { auditLog } from '@/lib/audit'
 import { enforceRateLimit, enforceSameOrigin } from '@/lib/api-auth'
 import { publishRoomEvent } from '@/lib/ably'
+import { sanitizeUsedQuestionIds } from '@/lib/questions'
 
 export async function GET() {
   await cleanupOldRooms()
@@ -25,14 +26,14 @@ export async function POST(request: Request) {
     return apiError('Dados invalidos', 400, rateLimit.headers)
   }
 
-  const { playerName } = parsed.data
+  const { playerName, usedQuestionIds } = parsed.data
 
   const normalizedName = normalizePlayerName(playerName)
   if (!normalizedName) {
     return apiError('Nome do jogador deve ter entre 2 e 15 caracteres', 400, rateLimit.headers)
   }
 
-  const { room, playerId, playerToken } = await createRoom(normalizedName)
+  const { room, playerId, playerToken } = await createRoom(normalizedName, sanitizeUsedQuestionIds(usedQuestionIds))
   await publishRoomEvent(room.id, 'room-created', { state: buildClientState(room) })
   auditLog({
     event: 'room_created',

@@ -17,6 +17,7 @@ export const playerAuthSchema = z.object({
 
 export const createRoomSchema = z.object({
   playerName: playerNameSchema,
+  usedQuestionIds: z.array(z.string()).max(500).optional(),
 })
 
 export const joinRoomSchema = z.object({

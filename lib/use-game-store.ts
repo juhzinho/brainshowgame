@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 import type { GamePhase, RoundType, HostAnimation, Player, CounterAttackCard, SabotageType } from './game-state'
-import { clearStoredSession, saveStoredSession } from './client-session'
+import { appendStoredQuestionHistory, clearStoredSession, saveStoredSession } from './client-session'
 
 interface QuestionData {
+  id: string
   text: string
   category: string
   options: string[]
@@ -101,6 +102,11 @@ export const useGameStore = create<GameStore>((set) => ({
     set((prev) => {
       const newPhase = state.phase ?? prev.phase
       const phaseChanged = newPhase !== prev.phase
+      const incomingQuestion = state.question
+
+      if (incomingQuestion?.id && incomingQuestion.id !== prev.question?.id) {
+        appendStoredQuestionHistory(incomingQuestion.id)
+      }
 
       return {
         ...state,

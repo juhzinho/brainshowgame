@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import { useGameStore } from '@/lib/use-game-store'
 import { useGame } from '@/lib/use-game'
-import { loadStoredSession } from '@/lib/client-session'
+import { loadStoredQuestionHistory, loadStoredSession } from '@/lib/client-session'
 import { MainMenu } from '@/components/game/MainMenu'
 import { WaitingRoom } from '@/components/game/WaitingRoom'
 import { GameHUD } from '@/components/game/GameHUD'
@@ -69,7 +69,10 @@ function HomeContent() {
         const res = await fetch('/api/rooms', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ playerName: name }),
+          body: JSON.stringify({
+            playerName: name,
+            usedQuestionIds: loadStoredQuestionHistory(),
+          }),
         })
         const data = await res.json()
         if (!res.ok) {

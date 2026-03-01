@@ -160,6 +160,7 @@ export interface ClientGameState {
   totalRounds: number
   roundType: RoundType | null
   question: {
+    id: string
     text: string
     category: string
     options: string[]
