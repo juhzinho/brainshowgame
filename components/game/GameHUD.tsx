@@ -120,9 +120,9 @@ export function GameHUD({ onAnswer, onSabotage, onStealVote, onCounterAttack, on
 
       {/* Host Message */}
       {hostMessage && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-10">
-          <div className="bg-[#0d1117]/90 backdrop-blur-xl border border-[#e94560]/30 rounded-xl px-6 py-3 max-w-lg text-center shadow-[0_0_30px_rgba(233,69,96,0.15)]">
-            <p className="text-white/90 font-sans text-sm leading-relaxed">{hostMessage}</p>
+        <div className="absolute top-24 left-1/2 z-10 w-[calc(100%-1.5rem)] max-w-lg -translate-x-1/2 sm:top-16 sm:w-auto">
+          <div className="bg-[#0d1117]/90 backdrop-blur-xl border border-[#e94560]/30 rounded-xl px-4 py-2 sm:px-6 sm:py-3 text-center shadow-[0_0_30px_rgba(233,69,96,0.15)]">
+            <p className="text-white/90 font-sans text-xs leading-relaxed sm:text-sm">{hostMessage}</p>
           </div>
         </div>
       )}
@@ -253,9 +253,9 @@ function TopBar({
   const isTimerCritical = timer <= 3 && timer > 0
 
   return (
-    <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-2 gap-2">
-      <div className="flex items-center gap-2">
-        <div className="bg-[#0d1117]/80 backdrop-blur-md border border-white/10 rounded-lg px-4 py-2 pointer-events-auto">
+    <div className="absolute top-0 left-0 right-0 z-20 grid grid-cols-2 gap-2 px-3 py-2 sm:flex sm:items-center sm:justify-between sm:px-4">
+      <div className="flex items-stretch gap-2">
+        <div className="bg-[#0d1117]/80 backdrop-blur-md border border-white/10 rounded-lg px-3 py-2 pointer-events-auto sm:px-4">
           <p className="text-[10px] text-white/50 font-sans uppercase tracking-wider">Rodada</p>
           <p className="text-white font-sans font-bold text-sm">
             {currentRound + 1}/{totalRounds}
@@ -266,13 +266,13 @@ function TopBar({
           className="bg-[#0d1117]/80 backdrop-blur-md border border-white/10 rounded-lg px-3 py-2 pointer-events-auto hover:bg-white/10 transition-colors"
           title={soundOn ? 'Desativar som' : 'Ativar som'}
         >
-          <span className="text-white/70 text-xs font-sans">{soundOn ? 'Som ON' : 'Som OFF'}</span>
+          <span className="text-white/70 text-[11px] font-sans sm:text-xs">{soundOn ? 'Som ON' : 'Som OFF'}</span>
         </button>
       </div>
 
       {roundType && (
-        <div className="bg-[#0d1117]/80 backdrop-blur-md border border-[#e94560]/30 rounded-lg px-4 py-2 shadow-[0_0_15px_rgba(233,69,96,0.1)]">
-          <p className="text-white font-sans font-bold text-sm text-center">
+        <div className="order-3 col-span-2 bg-[#0d1117]/80 backdrop-blur-md border border-[#e94560]/30 rounded-lg px-4 py-2 shadow-[0_0_15px_rgba(233,69,96,0.1)] sm:order-none sm:col-span-1">
+          <p className="text-white font-sans font-bold text-sm text-center sm:text-sm">
             {ROUND_NAMES[roundType as keyof typeof ROUND_NAMES] || roundType}
           </p>
         </div>
@@ -280,7 +280,7 @@ function TopBar({
 
       <div
         className={cn(
-          'rounded-lg px-4 py-2 min-w-[70px] text-center transition-all duration-300 pointer-events-auto',
+          'rounded-lg px-3 py-2 min-w-[70px] text-center transition-all duration-300 pointer-events-auto justify-self-end sm:px-4',
           isTimerActive
             ? isTimerCritical
               ? 'bg-[#e94560]/90 border-2 border-[#e94560] animate-pulse shadow-[0_0_20px_rgba(233,69,96,0.5)]'
@@ -293,7 +293,7 @@ function TopBar({
         <p className="text-[10px] text-white/50 font-sans uppercase tracking-wider">Tempo</p>
         <p
           className={cn(
-            'font-mono font-bold text-lg',
+            'font-mono font-bold text-base sm:text-lg',
             isTimerCritical ? 'text-white' : isTimerLow ? 'text-[#0d1117]' : 'text-white'
           )}
         >
@@ -403,7 +403,7 @@ function QuestionPanel({
   const showBlindOverlay = isBlind && blindTimer > 0
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 z-20 p-4">
+    <div className="absolute inset-x-0 bottom-0 top-36 z-20 flex flex-col justify-end overflow-y-auto p-3 sm:top-auto sm:p-4">
       {/* Sabotage warnings */}
       <div className="flex flex-wrap gap-2 justify-center mb-2">
         {isFrozen && (
@@ -430,12 +430,12 @@ function QuestionPanel({
 
       {/* Question */}
       <div className={cn(
-        'bg-[#0d1117]/90 backdrop-blur-xl border rounded-xl overflow-hidden mb-3 max-w-2xl mx-auto transition-all duration-300',
+        'bg-[#0d1117]/90 backdrop-blur-xl border rounded-xl overflow-hidden mb-3 max-w-2xl mx-auto w-full transition-all duration-300',
         showBlindOverlay ? 'border-[#B10DC9]/60 shadow-[0_0_30px_rgba(177,13,201,0.3)]' : 'border-white/10'
       )}>
         {/* Category image banner */}
         {CATEGORY_IMAGE_MAP[question.category] && (
-          <div className="relative h-20 w-full overflow-hidden">
+          <div className="relative h-14 w-full overflow-hidden sm:h-20">
             <Image
               src={CATEGORY_IMAGE_MAP[question.category]}
               alt={question.category}
@@ -445,7 +445,7 @@ function QuestionPanel({
             <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0d1117]/95" />
           </div>
         )}
-        <div className="px-6 py-4">
+        <div className="px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-[10px] text-white/40 font-sans uppercase tracking-wider">{question.category}</span>
             <span className={cn(
@@ -458,7 +458,7 @@ function QuestionPanel({
             </span>
           </div>
           <p className={cn(
-            'font-sans font-bold text-base leading-relaxed text-balance transition-all duration-300',
+            'font-sans font-bold text-sm leading-relaxed text-balance transition-all duration-300 sm:text-base',
             showBlindOverlay ? 'text-transparent select-none blur-lg' : 'text-white'
           )}>
             {question.text}
@@ -470,7 +470,7 @@ function QuestionPanel({
       </div>
 
       {/* Answer Options */}
-      <div className="grid grid-cols-2 gap-2 max-w-2xl mx-auto pointer-events-auto">
+      <div className="grid grid-cols-2 gap-2 max-w-2xl mx-auto w-full pointer-events-auto">
         {displayOptions.map((opt, displayIndex) => {
           const origIdx = opt.originalIndex
           const isSelected = selectedAnswer === origIdx
@@ -488,7 +488,7 @@ function QuestionPanel({
               }}
               disabled={hasAnswered || phase === 'reveal' || isFrozen}
               className={cn(
-                'relative rounded-xl border-2 px-4 py-3 text-left transition-all duration-300 font-sans',
+                'relative rounded-xl border-2 px-3 py-2.5 text-left transition-all duration-300 font-sans sm:px-4 sm:py-3',
                 isCorrect
                   ? 'bg-[#2ECC40]/30 border-[#2ECC40] shadow-[0_0_25px_rgba(46,204,64,0.4)] scale-[1.02]'
                   : isWrong
@@ -503,7 +503,7 @@ function QuestionPanel({
             >
               <div className="flex items-center gap-3">
                 <span className={cn(
-                  'text-xs font-bold font-sans shrink-0 w-6 h-6 rounded-full flex items-center justify-center',
+                  'text-[11px] font-bold font-sans shrink-0 w-6 h-6 rounded-full flex items-center justify-center',
                   isCorrect ? 'bg-[#2ECC40]/40 text-[#2ECC40]' :
                   isWrong ? 'bg-[#e94560]/40 text-[#e94560]' :
                   'bg-white/10 text-white/50'
@@ -511,7 +511,7 @@ function QuestionPanel({
                   {optionLabels[displayIndex]}
                 </span>
                 <span className={cn(
-                  'text-sm font-sans leading-relaxed',
+                  'text-xs font-sans leading-relaxed sm:text-sm',
                   isCorrect ? 'text-[#2ECC40]' :
                   isWrong ? 'text-[#e94560]' :
                   'text-white/90'
@@ -577,7 +577,7 @@ function SabotagePanel({
   }
 
   return (
-    <div className="absolute left-4 bottom-52 z-20 pointer-events-auto">
+    <div className="absolute left-3 bottom-44 z-20 scale-90 pointer-events-auto sm:left-4 sm:bottom-52 sm:scale-100">
       <div className="bg-[#0d1117]/90 backdrop-blur-xl border border-white/10 rounded-xl p-3">
         <p className="text-[10px] text-white/40 font-sans mb-2 uppercase tracking-wider">Sabotagens</p>
         <div className="flex flex-col gap-1.5">
@@ -966,7 +966,7 @@ function PlayerAnswerFeedback({
   })
 
   return (
-    <div className="absolute top-16 left-1/2 -translate-x-1/2 z-15 pointer-events-none">
+    <div className="absolute top-32 left-1/2 z-15 w-[calc(100%-1.5rem)] -translate-x-1/2 pointer-events-none sm:top-16 sm:w-auto">
       <div className="flex flex-wrap gap-2 justify-center max-w-xl">
         {results.map((p) => (
           <div
@@ -1009,15 +1009,15 @@ function ScoreboardSidebar({
   const displayPlayers = expanded ? players : players.slice(0, 5)
 
   return (
-    <div className="absolute top-16 right-4 z-10 pointer-events-auto">
-      <div className="bg-[#0d1117]/80 backdrop-blur-xl border border-white/10 rounded-xl p-3 min-w-[160px]">
+    <div className="absolute right-3 top-24 z-10 max-w-[58vw] pointer-events-auto sm:right-4 sm:top-16 sm:max-w-none">
+      <div className="bg-[#0d1117]/80 backdrop-blur-xl border border-white/10 rounded-xl p-2.5 min-w-0 sm:min-w-[160px] sm:p-3">
         <p className="text-[10px] text-white/40 font-sans mb-2 uppercase tracking-wider">Placar</p>
         <div className="flex flex-col gap-1">
           {displayPlayers.map((p, i) => (
             <div
               key={p.id}
               className={cn(
-                'flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-sans transition-all',
+                'flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] font-sans transition-all sm:text-xs',
                 p.id === playerId ? 'bg-[#e94560]/15 border border-[#e94560]/20' : '',
                 p.isEliminated ? 'opacity-30' : '',
                 eliminatedThisRound.includes(p.id) ? 'bg-[#e94560]/10' : '',

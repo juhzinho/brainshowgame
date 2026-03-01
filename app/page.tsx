@@ -126,7 +126,7 @@ function HomeContent() {
 
   // In a room - show the game
   return (
-    <main className="relative w-full h-screen overflow-hidden bg-[#0a0a1a]">
+    <main className="relative w-full h-[100dvh] overflow-hidden bg-[#0a0a1a]">
       {/* Background image behind 3D scene */}
       <div className="absolute inset-0 z-0">
         <Image
