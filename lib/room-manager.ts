@@ -30,6 +30,7 @@ const PLAYER_NAME_MIN_LENGTH = 2
 const PLAYER_NAME_MAX_LENGTH = 15
 const ROOM_ID_LENGTH = 5
 const INACTIVE_THRESHOLD = 8000
+const ACTIVE_HEARTBEAT_INTERVAL = 2500
 
 function createPlayerSabotages() {
   return [
@@ -427,22 +428,45 @@ export async function setRoomCategories(roomId: string, categories: string[]): P
 }
 
 export async function markPlayerActive(roomId: string, playerId: string): Promise<void> {
-  await withRoomLock(roomId, async () => {
-    const room = await getStoredRoom(roomId)
-    if (!room) return
+  const room = await getStoredRoom(roomId)
+  if (!room) return
 
-    const now = Date.now()
-    room.players.forEach((player) => {
+  const now = Date.now()
+  const currentPlayer = room.players.find((player) => player.id === playerId)
+  if (!currentPlayer) return
+
+  const shouldRefreshSelf =
+    !currentPlayer.connected || now - (currentPlayer.lastActiveAt || 0) >= ACTIVE_HEARTBEAT_INTERVAL
+  const shouldDisconnectAnyone = room.players.some(
+    (player) => player.id !== playerId && player.connected && now - (player.lastActiveAt || 0) > INACTIVE_THRESHOLD
+  )
+
+  if (!shouldRefreshSelf && !shouldDisconnectAnyone) {
+    return
+  }
+
+  await withRoomLock(roomId, async () => {
+    const latestRoom = await getStoredRoom(roomId)
+    if (!latestRoom) return
+
+    let changed = false
+    latestRoom.players.forEach((player) => {
       const lastActive = player.lastActiveAt || 0
       if (player.id === playerId) {
-        player.lastActiveAt = now
-        player.connected = true
+        if (!player.connected || now - lastActive >= ACTIVE_HEARTBEAT_INTERVAL) {
+          player.lastActiveAt = now
+          player.connected = true
+          changed = true
+        }
       } else if (now - lastActive > INACTIVE_THRESHOLD && player.connected) {
         player.connected = false
+        changed = true
       }
     })
 
-    await setStoredRoom(room)
+    if (changed) {
+      await setStoredRoom(latestRoom)
+    }
   })
 }
 
