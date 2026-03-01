@@ -1,0 +1,37 @@
+import { NextResponse } from 'next/server'
+import { advanceRoom, submitStealVote } from '@/lib/game-engine'
+import { stealVoteSchema } from '@/lib/api-schemas'
+import { apiError } from '@/lib/api-response'
+import { getPlayerTokenFromRequest, requireAuthorizedPlayer, enforceRateLimit, enforceSameOrigin } from '@/lib/api-auth'
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ roomId: string }> }
+) {
+  const { roomId } = await params
+  const sameOriginError = enforceSameOrigin(request)
+  if (sameOriginError) return sameOriginError
+
+  const rateLimit = enforceRateLimit(request, 'gameplayAction', `${roomId}:steal-vote`)
+  if ('error' in rateLimit) return rateLimit.error
+
+  const body = await request.json().catch(() => null)
+  const parsed = stealVoteSchema.safeParse(body)
+  if (!parsed.success) {
+    return apiError('Dados invalidos', 400, rateLimit.headers)
+  }
+  const { playerId, playerToken: bodyPlayerToken, targetId } = parsed.data
+
+  await advanceRoom(roomId)
+  const auth = await requireAuthorizedPlayer(roomId, playerId, getPlayerTokenFromRequest(request, bodyPlayerToken))
+  if (!auth.ok) {
+    return apiError(auth.error, auth.status, rateLimit.headers)
+  }
+
+  const success = await submitStealVote(roomId, playerId, targetId)
+  if (!success) {
+    return apiError('Vote failed', 400, rateLimit.headers)
+  }
+
+  return NextResponse.json({ ok: true }, { headers: rateLimit.headers })
+}
