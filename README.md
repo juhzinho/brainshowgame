@@ -9,6 +9,7 @@ Variáveis obrigatórias no Vercel:
 ```env
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
+ABLY_API_KEY=
 ```
 
 Healthcheck:
@@ -24,6 +25,12 @@ Resultado esperado:
 ```
 
 Se aparecer `"storage":"memory"`, o deploy está sem Redis.
+
+Realtime:
+
+- o jogo usa Redis como fonte da verdade
+- o Ably é usado para propagar atualizações instantâneas da sala
+- sem `ABLY_API_KEY`, o jogo continua funcionando, mas depende mais de polling
 
 ## Teste Manual
 

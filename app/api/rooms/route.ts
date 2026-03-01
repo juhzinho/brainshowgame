@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
-import { createRoom, listRooms, cleanupOldRooms, normalizePlayerName } from '@/lib/room-manager'
+import { buildClientState, createRoom, listRooms, cleanupOldRooms, normalizePlayerName } from '@/lib/room-manager'
 import { createRoomSchema } from '@/lib/api-schemas'
 import { apiError } from '@/lib/api-response'
 import { auditLog } from '@/lib/audit'
 import { enforceRateLimit, enforceSameOrigin } from '@/lib/api-auth'
+import { publishRoomEvent } from '@/lib/ably'
 
 export async function GET() {
   await cleanupOldRooms()
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
   }
 
   const { room, playerId, playerToken } = await createRoom(normalizedName)
+  await publishRoomEvent(room.id, 'room-created', { state: buildClientState(room) })
   auditLog({
     event: 'room_created',
     roomId: room.id,

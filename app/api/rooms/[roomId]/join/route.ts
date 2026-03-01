@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
-import { joinRoom, getRoom, normalizePlayerName } from '@/lib/room-manager'
+import { buildClientState, joinRoom, getRoom, normalizePlayerName } from '@/lib/room-manager'
 import { joinRoomSchema } from '@/lib/api-schemas'
 import { apiError } from '@/lib/api-response'
 import { auditLog } from '@/lib/audit'
 import { enforceRateLimit, enforceSameOrigin } from '@/lib/api-auth'
+import { publishRoomEvent } from '@/lib/ably'
 
 export async function POST(
   request: Request,
@@ -48,6 +49,7 @@ export async function POST(
   if (!result) {
     return apiError('Erro ao entrar na sala. Tente novamente.', 400, rateLimit.headers)
   }
+  await publishRoomEvent(roomId, 'room-joined', { state: buildClientState(result.room) })
 
   auditLog({
     event: 'room_joined',

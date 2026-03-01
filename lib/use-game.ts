@@ -1,11 +1,16 @@
 'use client'
 
 import { useEffect, useCallback } from 'react'
+import * as Ably from 'ably'
 import { useGameStore } from './use-game-store'
-import type { SabotageType } from './game-state'
+import type { ClientGameState, SabotageType } from './game-state'
 
 export function useGame(roomId: string | null, playerId: string | null, playerToken: string | null) {
-  const store = useGameStore()
+  const resetStore = useGameStore((state) => state.reset)
+  const setConnected = useGameStore((state) => state.setConnected)
+  const updateGameState = useGameStore((state) => state.updateGameState)
+  const selectAnswer = useGameStore((state) => state.selectAnswer)
+  const applyOptimisticSabotage = useGameStore((state) => state.applyOptimisticSabotage)
 
   const buildHeaders = useCallback(() => {
     const headers: HeadersInit = { 'Content-Type': 'application/json' }
@@ -26,19 +31,71 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
 
       if (!res.ok) {
         if (res.status === 401 || res.status === 404) {
-          store.reset()
+          resetStore()
           return
         }
         return
       }
 
       const data = await res.json()
-      store.setConnected(true)
-      store.updateGameState(data)
+      setConnected(true)
+      updateGameState(data)
     } catch {
-      store.setConnected(false)
+      setConnected(false)
     }
-  }, [roomId, playerId, playerToken, store])
+  }, [roomId, playerId, playerToken, resetStore, setConnected, updateGameState])
+
+  useEffect(() => {
+    if (!roomId) return
+
+    let client: Ably.Realtime | null = null
+    let channel: Ably.RealtimeChannel | null = null
+
+    async function connectRealtime() {
+      try {
+        client = new Ably.Realtime({
+          authUrl: '/api/ably/auth',
+        })
+
+        channel = client.channels.get(`room:${roomId}`)
+        const handleRealtimeMessage = (message: { data?: { state?: Partial<ClientGameState> } }) => {
+          const nextState = message.data?.state
+          if (nextState) {
+            setConnected(true)
+            updateGameState(nextState)
+            return
+          }
+
+          void refreshGameState()
+        }
+
+        channel.subscribe('room-created', handleRealtimeMessage)
+        channel.subscribe('room-joined', handleRealtimeMessage)
+        channel.subscribe('answer-submitted', handleRealtimeMessage)
+        channel.subscribe('player-ready', handleRealtimeMessage)
+        channel.subscribe('categories-updated', handleRealtimeMessage)
+        channel.subscribe('sabotage-used', handleRealtimeMessage)
+        channel.subscribe('room-updated', handleRealtimeMessage)
+        channel.subscribe('game-started', handleRealtimeMessage)
+        channel.subscribe('game-restarted', handleRealtimeMessage)
+        channel.subscribe('steal-vote-submitted', handleRealtimeMessage)
+        channel.subscribe('counter-attack-submitted', handleRealtimeMessage)
+      } catch {
+        // fallback to polling only
+      }
+    }
+
+    void connectRealtime()
+
+    return () => {
+      if (channel) {
+        void channel.unsubscribe()
+      }
+      if (client) {
+        client.close()
+      }
+    }
+  }, [roomId, refreshGameState, setConnected, updateGameState])
 
   // Poll as a fallback and to advance timer-driven phases in serverless runtime.
   useEffect(() => {
@@ -56,7 +113,7 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
         })
         if (!res.ok) {
           if (res.status === 401 || res.status === 404) {
-            store.reset()
+            resetStore()
             return
           }
           scheduleNext(1200)
@@ -64,19 +121,19 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
         }
         const data = await res.json()
         if (active && data) {
-          store.setConnected(true)
-          store.updateGameState(data)
+          setConnected(true)
+          updateGameState(data)
           
           const phase = data.phase || 'waiting'
           const isActive = ['answering', 'steal-vote', 'counter-attack'].includes(phase)
           const isWaiting = phase === 'waiting' || phase === 'finished'
-          const nextDelay = isActive ? 650 : isWaiting ? 2500 : 1200
+          const nextDelay = isActive ? 900 : isWaiting ? 3000 : 1500
           scheduleNext(nextDelay)
         } else {
-          scheduleNext(1200)
+          scheduleNext(1500)
         }
       } catch {
-        if (active) store.setConnected(false)
+        if (active) setConnected(false)
         scheduleNext(2000)
       }
     }
@@ -96,12 +153,12 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
         timeoutId = null
       }
     }
-  }, [roomId, playerId, playerToken, store])
+  }, [roomId, playerId, playerToken, resetStore, setConnected, updateGameState])
 
   // Send answer
   const sendAnswer = useCallback(async (answerIndex: number) => {
     if (!roomId || !playerId || !playerToken) return
-    store.selectAnswer(answerIndex)
+    selectAnswer(answerIndex)
     try {
       await fetch(`/api/rooms/${roomId}/answer`, {
         method: 'POST',
@@ -112,22 +169,31 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
     } catch {
       // ignore
     }
-  }, [roomId, playerId, playerToken, buildHeaders, refreshGameState, store])
+  }, [roomId, playerId, playerToken, buildHeaders, refreshGameState, selectAnswer])
 
   // Send sabotage
   const sendSabotage = useCallback(async (targetPlayerId: string, sabotageType: SabotageType) => {
     if (!roomId || !playerId || !playerToken) return
+    applyOptimisticSabotage(targetPlayerId, sabotageType)
     try {
-      await fetch(`/api/rooms/${roomId}/sabotage`, {
+      const res = await fetch(`/api/rooms/${roomId}/sabotage`, {
         method: 'POST',
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken, targetPlayerId, sabotageType }),
       })
+      if (res.ok) {
+        const data = await res.json()
+        if (data?.state) {
+          updateGameState(data.state)
+          return
+        }
+      }
       await refreshGameState()
     } catch {
       // ignore
+      await refreshGameState()
     }
-  }, [roomId, playerId, playerToken, buildHeaders, refreshGameState])
+  }, [roomId, playerId, playerToken, applyOptimisticSabotage, buildHeaders, refreshGameState, updateGameState])
 
   // Start game
   const startGame = useCallback(async () => {

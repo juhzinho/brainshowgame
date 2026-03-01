@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
-import { applySabotage, broadcastState } from '@/lib/room-manager'
+import { applySabotage, broadcastState, buildClientState, getRoom } from '@/lib/room-manager'
 import type { SabotageType } from '@/lib/game-state'
 import { sabotageSchema } from '@/lib/api-schemas'
 import { apiError } from '@/lib/api-response'
 import { getPlayerTokenFromRequest, requireAuthorizedPlayer, enforceRateLimit, enforceSameOrigin } from '@/lib/api-auth'
 import { advanceRoom } from '@/lib/game-engine'
+import { publishRoomEvent } from '@/lib/ably'
 
 export async function POST(
   request: Request,
@@ -41,6 +42,8 @@ export async function POST(
   }
 
   await broadcastState(roomId)
-  await advanceRoom(roomId)
-  return NextResponse.json({ success: true }, { headers: rateLimit.headers })
+  const room = await advanceRoom(roomId)
+  await publishRoomEvent(roomId, 'sabotage-used', room ? { state: buildClientState(room) } : undefined)
+  const latestRoom = room ?? await getRoom(roomId)
+  return NextResponse.json({ success: true, state: latestRoom ? buildClientState(latestRoom) : null }, { headers: rateLimit.headers })
 }

@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
-import { broadcastState, getRoom, sanitizeCategories, setRoomCategories } from '@/lib/room-manager'
+import { broadcastState, buildClientState, getRoom, sanitizeCategories, setRoomCategories } from '@/lib/room-manager'
 import { categoriesSchema } from '@/lib/api-schemas'
 import { apiError } from '@/lib/api-response'
 import { auditLog } from '@/lib/audit'
 import { getPlayerTokenFromRequest, requireAuthorizedPlayer, enforceRateLimit, enforceSameOrigin } from '@/lib/api-auth'
+import { publishRoomEvent } from '@/lib/ably'
 
 export async function POST(
   request: Request,
@@ -44,6 +45,8 @@ export async function POST(
 
   await setRoomCategories(roomId, sanitizedCategories)
   await broadcastState(roomId)
+  const updatedRoom = await getRoom(roomId)
+  await publishRoomEvent(roomId, 'categories-updated', updatedRoom ? { state: buildClientState(updatedRoom) } : undefined)
   auditLog({
     event: 'room_categories_updated',
     roomId,

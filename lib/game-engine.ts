@@ -1,10 +1,12 @@
 import {
   broadcastState,
+  buildClientState,
   getRoom,
   resetSabotagesForRound,
   saveRoom,
   withRoomLock,
 } from './room-manager'
+import { publishRoomEvent } from './ably'
 import { getQuestionsForRound } from './questions'
 import type { Room } from './game-state'
 import { ALL_COUNTER_ATTACKS, ROUND_DESCRIPTIONS, ROUND_NAMES } from './game-state'
@@ -530,11 +532,11 @@ function advanceRoomState(room: Room): boolean {
 }
 
 export async function advanceRoom(roomId: string): Promise<Room | null> {
+  let changed = false
   const room = await withRoomLock(roomId, async () => {
     const current = await getRoom(roomId)
     if (!current) return null
 
-    let changed = false
     while (advanceRoomState(current)) {
       changed = true
     }
@@ -548,6 +550,9 @@ export async function advanceRoom(roomId: string): Promise<Room | null> {
 
   if (room) {
     await broadcastState(roomId)
+    if (changed) {
+      await publishRoomEvent(roomId, 'room-updated', { state: buildClientState(room) })
+    }
   }
 
   return room
@@ -585,7 +590,9 @@ export async function startGame(roomId: string): Promise<boolean> {
   })
 
   if (started) {
+    const room = await getRoom(roomId)
     await broadcastState(roomId)
+    await publishRoomEvent(roomId, 'game-started', room ? { state: buildClientState(room) } : undefined)
   }
 
   return started
@@ -623,7 +630,9 @@ export async function restartGame(roomId: string): Promise<boolean> {
   })
 
   if (restarted) {
+    const room = await getRoom(roomId)
     await broadcastState(roomId)
+    await publishRoomEvent(roomId, 'game-restarted', room ? { state: buildClientState(room) } : undefined)
   }
 
   return restarted
@@ -642,7 +651,8 @@ export async function submitStealVote(roomId: string, voterId: string, targetId:
   })
 
   if (success) {
-    await advanceRoom(roomId)
+    const room = await advanceRoom(roomId)
+    await publishRoomEvent(roomId, 'steal-vote-submitted', room ? { state: buildClientState(room) } : undefined)
   }
 
   return success
@@ -660,7 +670,8 @@ export async function submitCounterAttack(roomId: string, victimId: string, card
   })
 
   if (success) {
-    await advanceRoom(roomId)
+    const room = await advanceRoom(roomId)
+    await publishRoomEvent(roomId, 'counter-attack-submitted', room ? { state: buildClientState(room) } : undefined)
   }
 
   return success
@@ -673,5 +684,7 @@ export async function stopGame(roomId: string): Promise<void> {
     setPhase(room, 'finished', null, null)
     await saveRoom(room)
   })
+  const room = await getRoom(roomId)
   await broadcastState(roomId)
+  await publishRoomEvent(roomId, 'game-stopped', room ? { state: buildClientState(room) } : undefined)
 }

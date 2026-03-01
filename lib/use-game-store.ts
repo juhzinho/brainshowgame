@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { GamePhase, RoundType, HostAnimation, Player, CounterAttackCard } from './game-state'
+import type { GamePhase, RoundType, HostAnimation, Player, CounterAttackCard, SabotageType } from './game-state'
 import { clearStoredSession, saveStoredSession } from './client-session'
 
 interface QuestionData {
@@ -49,6 +49,7 @@ interface GameStore {
   setConnected: (connected: boolean) => void
   updateGameState: (state: Partial<GameStore>) => void
   selectAnswer: (index: number) => void
+  applyOptimisticSabotage: (targetPlayerId: string, sabotageType: SabotageType) => void
   resetAnswer: () => void
   setSabotageTarget: (playerId: string | null) => void
   setShowRoundAnnouncement: (show: boolean) => void
@@ -120,6 +121,48 @@ export const useGameStore = create<GameStore>((set) => ({
     }),
 
   selectAnswer: (index) => set({ selectedAnswer: index, hasAnswered: true }),
+  applyOptimisticSabotage: (targetPlayerId, sabotageType) =>
+    set((prev) => {
+      const now = Date.now()
+      const expiresAt =
+        now +
+        (sabotageType === 'freeze'
+          ? 3000
+          : sabotageType === 'invert'
+            ? 5000
+            : sabotageType === 'blind'
+              ? 4000
+              : 999999)
+
+      return {
+        players: prev.players.map((player) => {
+          if (player.id === prev.playerId) {
+            return {
+              ...player,
+              sabotages: player.sabotages.map((sabotage) =>
+                sabotage.type === sabotageType ? { ...sabotage, used: true } : sabotage
+              ),
+            }
+          }
+
+          if (player.id === targetPlayerId) {
+            return {
+              ...player,
+              activeSabotageEffect: {
+                type: sabotageType,
+                fromPlayerId: prev.playerId || '',
+                toPlayerId: targetPlayerId,
+                expiresAt,
+              },
+            }
+          }
+
+          return player
+        }),
+        hostMessage: 'Sabotagem enviada!',
+        hostAnimation: 'point',
+      }
+    }),
   resetAnswer: () => set({ selectedAnswer: null, hasAnswered: false }),
   setSabotageTarget: (playerId) => set({ selectedSabotageTarget: playerId }),
   setShowRoundAnnouncement: (show) => set({ showRoundAnnouncement: show }),

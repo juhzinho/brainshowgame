@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
-import { broadcastState, recordAnswer } from '@/lib/room-manager'
+import { broadcastState, buildClientState, recordAnswer } from '@/lib/room-manager'
 import { answerSchema } from '@/lib/api-schemas'
 import { apiError } from '@/lib/api-response'
 import { getPlayerTokenFromRequest, requireAuthorizedPlayer, enforceRateLimit, enforceSameOrigin } from '@/lib/api-auth'
 import { advanceRoom } from '@/lib/game-engine'
+import { publishRoomEvent } from '@/lib/ably'
 
 export async function POST(
   request: Request,
@@ -35,6 +36,7 @@ export async function POST(
   }
 
   await broadcastState(roomId)
-  await advanceRoom(roomId)
+  const room = await advanceRoom(roomId)
+  await publishRoomEvent(roomId, 'answer-submitted', room ? { state: buildClientState(room) } : undefined)
   return NextResponse.json({ success: true }, { headers: rateLimit.headers })
 }
