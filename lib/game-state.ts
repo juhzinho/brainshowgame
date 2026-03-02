@@ -169,6 +169,7 @@ export interface ClientGameState {
   correctIndex: number | null // only sent during 'reveal' phase
   answersMap: Record<string, number> | null // playerId -> answerIndex, only during 'reveal'
   timer: number
+  phaseEndsAt: number | null
   hostMessage: string
   hostAnimation: HostAnimation
   myPlayerId: string

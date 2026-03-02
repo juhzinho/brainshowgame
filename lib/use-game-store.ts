@@ -28,6 +28,7 @@ interface GameStore {
   correctIndex: number | null
   answersMap: Record<string, number> | null
   timer: number
+  phaseEndsAt: number | null
   hostMessage: string
   hostAnimation: HostAnimation
   eliminatedThisRound: string[]
@@ -72,6 +73,7 @@ const initialState = {
   correctIndex: null,
   answersMap: null,
   timer: 0,
+  phaseEndsAt: null,
   hostMessage: '',
   hostAnimation: 'idle' as HostAnimation,
   eliminatedThisRound: [],

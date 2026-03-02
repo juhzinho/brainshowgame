@@ -428,6 +428,7 @@ export function buildClientState(room: Room) {
     correctIndex: room.state === 'reveal' && room.currentQuestion ? room.currentQuestion.correctIndex : null,
     answersMap: room.state === 'reveal' ? { ...room.answers } : null,
     timer,
+    phaseEndsAt: room.phaseEndsAt,
     hostMessage: room.hostMessage,
     hostAnimation: room.hostAnimation,
     eliminatedThisRound: room.eliminatedThisRound,

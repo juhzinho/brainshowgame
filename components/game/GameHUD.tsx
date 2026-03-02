@@ -26,6 +26,7 @@ export function GameHUD({ onAnswer, onSabotage, onStealVote, onCounterAttack, on
     question,
     correctIndex,
     timer,
+    phaseEndsAt,
     hostMessage,
     playerId,
     selectedAnswer,
@@ -42,6 +43,27 @@ export function GameHUD({ onAnswer, onSabotage, onStealVote, onCounterAttack, on
 
   const prevPhaseRef = useRef(phase)
   const prevTimerRef = useRef(timer)
+  const [timerTick, setTimerTick] = useState(() => Date.now())
+
+  useEffect(() => {
+    const isTimedPhase = phase === 'answering' || phase === 'steal-vote' || phase === 'counter-attack'
+    if (!isTimedPhase || !phaseEndsAt) return
+
+    const intervalId = setInterval(() => {
+      setTimerTick(Date.now())
+    }, 250)
+
+    return () => clearInterval(intervalId)
+  }, [phase, phaseEndsAt])
+
+  const displayTimer = useMemo(() => {
+    const isTimedPhase = phase === 'answering' || phase === 'steal-vote' || phase === 'counter-attack'
+    if (!isTimedPhase || !phaseEndsAt) {
+      return timer
+    }
+
+    return Math.max(0, Math.ceil((phaseEndsAt - timerTick) / 1000))
+  }, [phase, phaseEndsAt, timer, timerTick])
 
   // Sound effects based on phase changes
   useEffect(() => {
@@ -80,15 +102,15 @@ export function GameHUD({ onAnswer, onSabotage, onStealVote, onCounterAttack, on
 
   // Timer sound effects
   useEffect(() => {
-    if (phase === 'answering' && timer > 0 && timer <= 5 && timer !== prevTimerRef.current) {
-      if (timer <= 3) {
+    if (phase === 'answering' && displayTimer > 0 && displayTimer <= 5 && displayTimer !== prevTimerRef.current) {
+      if (displayTimer <= 3) {
         soundEngine.tickUrgent()
       } else {
         soundEngine.tick()
       }
     }
-    prevTimerRef.current = timer
-  }, [timer, phase])
+    prevTimerRef.current = displayTimer
+  }, [displayTimer, phase])
 
   const myPlayer = useMemo(
     () => players.find((p) => p.id === playerId),
@@ -110,7 +132,7 @@ export function GameHUD({ onAnswer, onSabotage, onStealVote, onCounterAttack, on
         currentRound={currentRound}
         totalRounds={totalRounds}
         roundType={roundType}
-        timer={timer}
+        timer={displayTimer}
         phase={phase}
         soundOn={soundOn}
         showScoreboard={showScoreboard}
@@ -199,7 +221,7 @@ export function GameHUD({ onAnswer, onSabotage, onStealVote, onCounterAttack, on
         <StealVotePanel
           players={players}
           playerId={playerId || ''}
-          timer={timer}
+          timer={displayTimer}
           stealVotes={stealVotes}
           onVote={onStealVote}
         />
@@ -224,7 +246,7 @@ export function GameHUD({ onAnswer, onSabotage, onStealVote, onCounterAttack, on
           cards={counterAttackCards || []}
           playerId={playerId || ''}
           stealVictimId={stealVictimId}
-          timer={timer}
+          timer={displayTimer}
           chosenCardIndex={chosenCardIndex}
           onPickCard={onCounterAttack}
           players={players}
