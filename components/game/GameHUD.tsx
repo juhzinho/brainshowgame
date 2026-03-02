@@ -570,7 +570,7 @@ function SabotagePanel({
   const [showTargets, setShowTargets] = useState(false)
 
   const availableSabotages = myPlayer.sabotages.filter((s) => !s.used)
-  const otherPlayers = players.filter((p) => p.id !== playerId && !p.isEliminated && p.connected)
+  const otherPlayers = players.filter((p) => p.id !== playerId && !p.isEliminated)
 
   if (availableSabotages.length === 0) return null
 
@@ -640,19 +640,28 @@ function SabotagePanel({
         <div className="absolute left-full ml-2 top-0 bg-[#0d1117]/95 backdrop-blur-xl border border-white/10 rounded-xl p-3 min-w-[160px] shadow-xl">
           <p className="text-[10px] text-white/40 font-sans mb-2 uppercase tracking-wider">Escolha o alvo:</p>
           <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
-            {otherPlayers.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => handleTargetClick(p.id)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-xs font-sans text-white/80"
-              >
-                <div
-                  className="w-3 h-3 rounded-full shrink-0 shadow-sm"
-                  style={{ backgroundColor: p.color }}
-                />
-                <span className="truncate">{p.name}</span>
-              </button>
-            ))}
+            {otherPlayers.length > 0 ? (
+              otherPlayers.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => handleTargetClick(p.id)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-xs font-sans text-white/80"
+                >
+                  <div
+                    className="w-3 h-3 rounded-full shrink-0 shadow-sm"
+                    style={{ backgroundColor: p.color }}
+                  />
+                  <span className="truncate flex-1 text-left">{p.name}</span>
+                  {!p.connected && (
+                    <span className="text-[10px] text-white/30">OFF</span>
+                  )}
+                </button>
+              ))
+            ) : (
+              <p className="px-3 py-2 text-xs font-sans text-white/40">
+                Nenhum alvo disponivel agora.
+              </p>
+            )}
           </div>
           <button
             onClick={() => { setShowTargets(false); setSelectedType(null) }}
