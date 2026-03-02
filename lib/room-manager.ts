@@ -43,6 +43,15 @@ function createPlayerSabotages() {
   ]
 }
 
+function clearExpiredSabotageEffect(player: Player, now = Date.now()): boolean {
+  if (player.activeSabotageEffect && player.activeSabotageEffect.expiresAt <= now) {
+    player.activeSabotageEffect = null
+    return true
+  }
+
+  return false
+}
+
 function applyPresenceToRoom(room: Room, presenceByPlayerId: Record<string, number>): Room {
   const now = Date.now()
 
@@ -315,6 +324,7 @@ export async function recordAnswer(roomId: string, playerId: string, answerIndex
 
     const player = room.players.find((entry) => entry.id === playerId)
     if (!player || player.isEliminated || !room.currentQuestion) return false
+    clearExpiredSabotageEffect(player)
     if (answerIndex < 0 || answerIndex >= room.currentQuestion.options.length) return false
     if (player.activeSabotageEffect?.type === 'freeze') return false
 
@@ -334,6 +344,8 @@ export async function applySabotage(roomId: string, fromPlayerId: string, toPlay
     const fromPlayer = room.players.find((entry) => entry.id === fromPlayerId)
     const toPlayer = room.players.find((entry) => entry.id === toPlayerId)
     if (!fromPlayer || !toPlayer) return false
+    clearExpiredSabotageEffect(fromPlayer)
+    clearExpiredSabotageEffect(toPlayer)
     if (fromPlayer.isEliminated || toPlayer.isEliminated) return false
     if (room.answers[fromPlayerId] !== undefined || toPlayer.activeSabotageEffect) return false
 
