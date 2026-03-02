@@ -9,6 +9,7 @@ type RedisResult<T> = {
 const globalForStorage = globalThis as unknown as {
   __brainshow_rooms_fallback?: Map<string, Room>
   __brainshow_locks_fallback?: Map<string, { token: string; expiresAt: number }>
+  __brainshow_presence_fallback?: Map<string, Map<string, number>>
 }
 
 if (!globalForStorage.__brainshow_rooms_fallback) {
@@ -16,6 +17,9 @@ if (!globalForStorage.__brainshow_rooms_fallback) {
 }
 if (!globalForStorage.__brainshow_locks_fallback) {
   globalForStorage.__brainshow_locks_fallback = new Map<string, { token: string; expiresAt: number }>()
+}
+if (!globalForStorage.__brainshow_presence_fallback) {
+  globalForStorage.__brainshow_presence_fallback = new Map<string, Map<string, number>>()
 }
 
 function getRedisConfig() {
@@ -59,6 +63,10 @@ function getLockKey(roomId: string) {
   return `brainshow:lock:${roomId}`
 }
 
+function getPresenceKey(roomId: string) {
+  return `brainshow:presence:${roomId}`
+}
+
 export function isPersistentStorageEnabled(): boolean {
   return Boolean(getRedisConfig())
 }
@@ -88,10 +96,12 @@ export async function deleteStoredRoom(roomId: string): Promise<void> {
   const config = getRedisConfig()
   if (!config) {
     globalForStorage.__brainshow_rooms_fallback!.delete(roomId)
+    globalForStorage.__brainshow_presence_fallback!.delete(roomId)
     return
   }
 
   await runRedisCommand('DEL', getRoomKey(roomId))
+  await runRedisCommand('DEL', getPresenceKey(roomId))
   await runRedisCommand('SREM', ROOM_SET_KEY, roomId)
 }
 
@@ -141,4 +151,29 @@ export async function releaseRoomLock(roomId: string, token: string): Promise<vo
   if (current === token) {
     await runRedisCommand('DEL', key)
   }
+}
+
+export async function setPlayerPresence(roomId: string, playerId: string, timestamp: number): Promise<void> {
+  const config = getRedisConfig()
+  if (!config) {
+    const roomPresence = globalForStorage.__brainshow_presence_fallback!.get(roomId) || new Map<string, number>()
+    roomPresence.set(playerId, timestamp)
+    globalForStorage.__brainshow_presence_fallback!.set(roomId, roomPresence)
+    return
+  }
+
+  await runRedisCommand('HSET', getPresenceKey(roomId), playerId, timestamp)
+}
+
+export async function getRoomPresence(roomId: string): Promise<Record<string, number>> {
+  const config = getRedisConfig()
+  if (!config) {
+    const roomPresence = globalForStorage.__brainshow_presence_fallback!.get(roomId) || new Map<string, number>()
+    return Object.fromEntries(roomPresence.entries())
+  }
+
+  const raw = (await runRedisCommand<Record<string, string | number>>('HGETALL', getPresenceKey(roomId))) || {}
+  return Object.fromEntries(
+    Object.entries(raw).map(([playerId, timestamp]) => [playerId, Number(timestamp) || 0])
+  )
 }

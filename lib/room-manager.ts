@@ -3,9 +3,11 @@ import { PLAYER_COLORS, QUESTION_CATEGORIES, ROUND_CONFIGS } from './game-state'
 import {
   acquireRoomLock,
   deleteStoredRoom,
+  getRoomPresence,
   getStoredRoom,
   listStoredRooms,
   releaseRoomLock,
+  setPlayerPresence,
   setStoredRoom,
 } from './storage'
 
@@ -30,7 +32,6 @@ const PLAYER_NAME_MIN_LENGTH = 2
 const PLAYER_NAME_MAX_LENGTH = 15
 const ROOM_ID_LENGTH = 5
 const INACTIVE_THRESHOLD = 8000
-const ACTIVE_HEARTBEAT_INTERVAL = 2500
 
 function createPlayerSabotages() {
   return [
@@ -40,6 +41,18 @@ function createPlayerSabotages() {
     { type: 'blind' as const, used: false },
     { type: 'halve' as const, used: false },
   ]
+}
+
+function applyPresenceToRoom(room: Room, presenceByPlayerId: Record<string, number>): Room {
+  const now = Date.now()
+
+  room.players.forEach((player) => {
+    const presenceTimestamp = presenceByPlayerId[player.id] ?? player.lastActiveAt ?? 0
+    player.lastActiveAt = presenceTimestamp || player.lastActiveAt || 0
+    player.connected = now - (player.lastActiveAt || 0) <= INACTIVE_THRESHOLD
+  })
+
+  return room
 }
 
 function generatePlayerToken(): string {
@@ -230,7 +243,11 @@ export async function joinRoom(roomId: string, playerName: string): Promise<{ pl
 }
 
 export async function getRoom(roomId: string): Promise<Room | null> {
-  return getStoredRoom(roomId)
+  const room = await getStoredRoom(roomId)
+  if (!room) return null
+
+  const presenceByPlayerId = await getRoomPresence(roomId)
+  return applyPresenceToRoom(room, presenceByPlayerId)
 }
 
 export async function saveRoom(room: Room): Promise<void> {
@@ -434,45 +451,9 @@ export async function setRoomCategories(roomId: string, categories: string[]): P
 
 export async function markPlayerActive(roomId: string, playerId: string): Promise<void> {
   const room = await getStoredRoom(roomId)
-  if (!room) return
+  if (!room || !room.players.some((player) => player.id === playerId)) return
 
-  const now = Date.now()
-  const currentPlayer = room.players.find((player) => player.id === playerId)
-  if (!currentPlayer) return
-
-  const shouldRefreshSelf =
-    !currentPlayer.connected || now - (currentPlayer.lastActiveAt || 0) >= ACTIVE_HEARTBEAT_INTERVAL
-  const shouldDisconnectAnyone = room.players.some(
-    (player) => player.id !== playerId && player.connected && now - (player.lastActiveAt || 0) > INACTIVE_THRESHOLD
-  )
-
-  if (!shouldRefreshSelf && !shouldDisconnectAnyone) {
-    return
-  }
-
-  await withRoomLock(roomId, async () => {
-    const latestRoom = await getStoredRoom(roomId)
-    if (!latestRoom) return
-
-    let changed = false
-    latestRoom.players.forEach((player) => {
-      const lastActive = player.lastActiveAt || 0
-      if (player.id === playerId) {
-        if (!player.connected || now - lastActive >= ACTIVE_HEARTBEAT_INTERVAL) {
-          player.lastActiveAt = now
-          player.connected = true
-          changed = true
-        }
-      } else if (now - lastActive > INACTIVE_THRESHOLD && player.connected) {
-        player.connected = false
-        changed = true
-      }
-    })
-
-    if (changed) {
-      await setStoredRoom(latestRoom)
-    }
-  })
+  await setPlayerPresence(roomId, playerId, Date.now())
 }
 
 export async function cleanupOldRooms(): Promise<void> {
