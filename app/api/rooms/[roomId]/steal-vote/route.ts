@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { advanceRoom, submitStealVote } from '@/lib/game-engine'
 import { stealVoteSchema } from '@/lib/api-schemas'
-import { apiError } from '@/lib/api-response'
+import { apiBusy, apiError } from '@/lib/api-response'
 import { getPlayerTokenFromRequest, requireAuthorizedPlayer, enforceRateLimit, enforceSameOrigin } from '@/lib/api-auth'
-import { broadcastState } from '@/lib/room-manager'
+import { broadcastState, isRoomLockError } from '@/lib/room-manager'
 
 export async function POST(
   request: Request,
@@ -23,17 +23,24 @@ export async function POST(
   }
   const { playerId, playerToken: bodyPlayerToken, targetId } = parsed.data
 
-  await advanceRoom(roomId)
-  const auth = await requireAuthorizedPlayer(roomId, playerId, getPlayerTokenFromRequest(request, bodyPlayerToken))
-  if (!auth.ok) {
-    return apiError(auth.error, auth.status, rateLimit.headers)
-  }
+  try {
+    await advanceRoom(roomId)
+    const auth = await requireAuthorizedPlayer(roomId, playerId, getPlayerTokenFromRequest(request, bodyPlayerToken))
+    if (!auth.ok) {
+      return apiError(auth.error, auth.status, rateLimit.headers)
+    }
 
-  const success = await submitStealVote(roomId, playerId, targetId)
-  if (!success) {
-    return apiError('Vote failed', 400, rateLimit.headers)
-  }
+    const success = await submitStealVote(roomId, playerId, targetId)
+    if (!success) {
+      return apiError('Vote failed', 400, rateLimit.headers)
+    }
 
-  await broadcastState(roomId)
-  return NextResponse.json({ ok: true }, { headers: rateLimit.headers })
+    await broadcastState(roomId)
+    return NextResponse.json({ ok: true }, { headers: rateLimit.headers })
+  } catch (error) {
+    if (isRoomLockError(error)) {
+      return apiBusy(undefined, rateLimit.headers)
+    }
+    throw error
+  }
 }

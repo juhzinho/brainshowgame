@@ -2,6 +2,7 @@ import {
   broadcastState,
   buildClientState,
   getRoom,
+  isRoomLockError,
   resetSabotagesForRound,
   saveRoom,
   withRoomLock,
@@ -533,20 +534,30 @@ function advanceRoomState(room: Room): boolean {
 
 export async function advanceRoom(roomId: string): Promise<Room | null> {
   let changed = false
-  const room = await withRoomLock(roomId, async () => {
-    const current = await getRoom(roomId)
-    if (!current) return null
+  let room: Room | null = null
 
-    while (advanceRoomState(current)) {
-      changed = true
+  try {
+    room = await withRoomLock(roomId, async () => {
+      const current = await getRoom(roomId)
+      if (!current) return null
+
+      while (advanceRoomState(current)) {
+        changed = true
+      }
+
+      if (changed) {
+        await saveRoom(current)
+      }
+
+      return current
+    })
+  } catch (error) {
+    if (!isRoomLockError(error)) {
+      throw error
     }
 
-    if (changed) {
-      await saveRoom(current)
-    }
-
-    return current
-  })
+    return getRoom(roomId)
+  }
 
   if (room) {
     await broadcastState(roomId)

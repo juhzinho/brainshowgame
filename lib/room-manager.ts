@@ -80,6 +80,10 @@ export async function withRoomLock<T>(roomId: string, handler: () => Promise<T>,
   throw new Error(`Could not acquire room lock for ${roomId}`)
 }
 
+export function isRoomLockError(error: unknown): boolean {
+  return error instanceof Error && error.message.startsWith('Could not acquire room lock for ')
+}
+
 export function normalizePlayerName(playerName: string): string | null {
   if (typeof playerName !== 'string') return null
 

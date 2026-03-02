@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getRoom, deleteRoom, buildClientState, getPublicRoomState, markPlayerActive } from '@/lib/room-manager'
-import { apiError } from '@/lib/api-response'
+import { getRoom, deleteRoom, buildClientState, getPublicRoomState, isRoomLockError, markPlayerActive } from '@/lib/room-manager'
+import { apiBusy, apiError } from '@/lib/api-response'
 import { auditLog } from '@/lib/audit'
 import { getPlayerTokenFromRequest, requireAuthorizedPlayer, enforceRateLimit, enforceSameOrigin } from '@/lib/api-auth'
 import { advanceRoom } from '@/lib/game-engine'
@@ -42,7 +42,13 @@ export async function GET(
   }
 
   // Mark player as active on every poll
-  await markPlayerActive(roomId, playerId)
+  try {
+    await markPlayerActive(roomId, playerId)
+  } catch (error) {
+    if (!isRoomLockError(error)) {
+      throw error
+    }
+  }
   const updatedRoom = await getRoom(roomId)
 
   return NextResponse.json(buildClientState(updatedRoom || room), { headers: rateLimit.headers })
@@ -70,7 +76,15 @@ export async function DELETE(
     return apiError('Apenas o host pode encerrar a sala', 403, rateLimit.headers)
   }
 
-  const deleted = await deleteRoom(roomId)
+  let deleted = false
+  try {
+    deleted = await deleteRoom(roomId)
+  } catch (error) {
+    if (isRoomLockError(error)) {
+      return apiBusy(undefined, rateLimit.headers)
+    }
+    throw error
+  }
   if (!deleted) {
     return apiError('Sala nao encontrada', 404, rateLimit.headers)
   }
