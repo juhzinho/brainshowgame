@@ -541,6 +541,16 @@ function QuestionPanel({
           )
         })}
       </div>
+
+      {phase === 'answering' && hasAnswered && (
+        <div className="mx-auto mt-3 max-w-2xl">
+          <div className="rounded-xl border border-[#4da8da]/30 bg-[#0d1117]/85 px-4 py-2 text-center shadow-[0_0_20px_rgba(77,168,218,0.12)]">
+            <p className="text-xs font-sans text-white/80 sm:text-sm">
+              Resposta enviada. Os pontos entram quando todos responderem ou quando o tempo acabar.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
