@@ -10,7 +10,7 @@ import {
 import { publishRoomEvent } from './ably'
 import { getQuestionsForRound } from './question-bank'
 import type { Room } from './game-state'
-import { ALL_COUNTER_ATTACKS, ROUND_DESCRIPTIONS, ROUND_NAMES } from './game-state'
+import { ALL_COUNTER_ATTACKS, ROUND_DESCRIPTIONS, ROUND_NAMES, STEAL_VOTE_ROUNDS } from './game-state'
 
 function shuffle<T>(items: T[]): T[] {
   const copy = [...items]
@@ -226,7 +226,7 @@ function showRoundScores(room: Room) {
 
 function maybeStartStealVote(room: Room): boolean {
   const eligiblePlayers = room.players.filter((player) => !player.isEliminated)
-  if ((room.currentRound === 3 || room.currentRound === 4) && eligiblePlayers.length >= 2) {
+  if (STEAL_VOTE_ROUNDS.includes(room.currentRound as (typeof STEAL_VOTE_ROUNDS)[number]) && eligiblePlayers.length >= 2) {
     room.stealVotes = {}
     room.stealVictimId = null
     room.stolenPoints = 0

@@ -68,6 +68,8 @@ export interface RoundConfig {
   bonusForSpeed: boolean
 }
 
+export const STEAL_VOTE_ROUNDS = [3, 4] as const
+
 export interface CategoryInfo {
   id: string
   name: string
@@ -212,7 +214,7 @@ export const ROUND_CONFIGS: RoundConfig[] = [
   { type: 'classic', questionCount: 5, timePerQuestion: 15, pointsPerCorrect: 100, bonusForSpeed: true },
   { type: 'true-false', questionCount: 7, timePerQuestion: 8, pointsPerCorrect: 75, bonusForSpeed: false },
   { type: 'blitz', questionCount: 10, timePerQuestion: 6, pointsPerCorrect: 50, bonusForSpeed: true },
-  { type: 'elimination', questionCount: 6, timePerQuestion: 12, pointsPerCorrect: 150, bonusForSpeed: false },
+  { type: 'classic', questionCount: 5, timePerQuestion: 13, pointsPerCorrect: 130, bonusForSpeed: true },
   { type: 'final', questionCount: 5, timePerQuestion: 20, pointsPerCorrect: 200, bonusForSpeed: false },
 ]
 
