@@ -3,7 +3,7 @@ import { advanceRoom, submitStealVote } from '@/lib/game-engine'
 import { stealVoteSchema } from '@/lib/api-schemas'
 import { apiBusy, apiError } from '@/lib/api-response'
 import { getPlayerTokenFromRequest, requireAuthorizedPlayer, enforceRateLimit, enforceSameOrigin } from '@/lib/api-auth'
-import { broadcastState, isRoomLockError } from '@/lib/room-manager'
+import { buildClientState, getRoom, isRoomLockError } from '@/lib/room-manager'
 
 export async function POST(
   request: Request,
@@ -35,8 +35,12 @@ export async function POST(
       return apiError('Vote failed', 400, rateLimit.headers)
     }
 
-    await broadcastState(roomId)
-    return NextResponse.json({ ok: true }, { headers: rateLimit.headers })
+    const room = await advanceRoom(roomId)
+    const latestRoom = room ?? await getRoom(roomId)
+    return NextResponse.json(
+      { ok: true, state: latestRoom ? buildClientState(latestRoom) : null },
+      { headers: rateLimit.headers }
+    )
   } catch (error) {
     if (isRoomLockError(error)) {
       return apiBusy(undefined, rateLimit.headers)

@@ -271,16 +271,23 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
   const submitStealVote = useCallback(async (targetId: string) => {
     if (!roomId || !playerId || !playerToken) return
     try {
-      await fetchWithBusyRetry(`/api/rooms/${roomId}/steal-vote`, {
+      const res = await fetchWithBusyRetry(`/api/rooms/${roomId}/steal-vote`, {
         method: 'POST',
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken, targetId }),
       })
+      if (res.ok) {
+        const data = await res.json()
+        if (data?.state) {
+          updateGameState(data.state)
+          return
+        }
+      }
       await refreshGameState()
     } catch {
       // ignore
     }
-  }, [roomId, playerId, playerToken, buildHeaders, fetchWithBusyRetry, refreshGameState])
+  }, [roomId, playerId, playerToken, buildHeaders, fetchWithBusyRetry, refreshGameState, updateGameState])
 
   // Submit counter-attack (card index)
   const submitCounterAttack = useCallback(async (cardIndex: number) => {

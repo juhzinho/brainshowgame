@@ -225,7 +225,8 @@ function showRoundScores(room: Room) {
 }
 
 function maybeStartStealVote(room: Room): boolean {
-  if (room.currentRound % 3 === 0 && room.players.length >= 2) {
+  const eligiblePlayers = room.players.filter((player) => !player.isEliminated)
+  if (room.currentRound % 3 === 0 && eligiblePlayers.length >= 2) {
     room.stealVotes = {}
     room.stealVictimId = null
     room.stolenPoints = 0
@@ -653,7 +654,7 @@ export async function submitStealVote(roomId: string, voterId: string, targetId:
     if (!room || room.state !== 'steal-vote' || voterId === targetId) return false
     const voter = room.players.find((player) => player.id === voterId)
     const target = room.players.find((player) => player.id === targetId)
-    if (!voter || !target || voter.isEliminated || !voter.connected || target.isEliminated || !target.connected) return false
+    if (!voter || !target || voter.isEliminated || target.isEliminated) return false
     room.stealVotes[voterId] = targetId
     await saveRoom(room)
     return true
