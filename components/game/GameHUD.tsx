@@ -101,6 +101,7 @@ export function GameHUD({ onAnswer, onSabotage, onStealVote, onCounterAttack, on
   )
 
   const [soundOn, setSoundOn] = useState(true)
+  const [showScoreboard, setShowScoreboard] = useState(true)
 
   return (
     <div className="absolute inset-0 pointer-events-none">
@@ -112,10 +113,12 @@ export function GameHUD({ onAnswer, onSabotage, onStealVote, onCounterAttack, on
         timer={timer}
         phase={phase}
         soundOn={soundOn}
+        showScoreboard={showScoreboard}
         onToggleSound={() => {
           const isOn = soundEngine.toggle()
           setSoundOn(isOn)
         }}
+        onToggleScoreboard={() => setShowScoreboard((current) => !current)}
       />
 
       {/* Host Message */}
@@ -162,11 +165,13 @@ export function GameHUD({ onAnswer, onSabotage, onStealVote, onCounterAttack, on
       )}
 
       {/* Scoreboard Sidebar */}
-      <ScoreboardSidebar
-        players={sortedPlayers}
-        playerId={playerId}
-        eliminatedThisRound={eliminatedThisRound}
-      />
+      {showScoreboard && (
+        <ScoreboardSidebar
+          players={sortedPlayers}
+          playerId={playerId}
+          eliminatedThisRound={eliminatedThisRound}
+        />
+      )}
 
       {/* Player Answer Feedback - shows who got it right/wrong */}
       {phase === 'reveal' && answersMap && correctIndex !== null && (
@@ -238,7 +243,9 @@ function TopBar({
   timer,
   phase,
   soundOn,
+  showScoreboard,
   onToggleSound,
+  onToggleScoreboard,
 }: {
   currentRound: number
   totalRounds: number
@@ -246,7 +253,9 @@ function TopBar({
   timer: number
   phase: string
   soundOn: boolean
+  showScoreboard: boolean
   onToggleSound: () => void
+  onToggleScoreboard: () => void
 }) {
   const isTimerActive = phase === 'answering' && timer > 0
   const isTimerLow = timer <= 5 && timer > 0
@@ -267,6 +276,15 @@ function TopBar({
           title={soundOn ? 'Desativar som' : 'Ativar som'}
         >
           <span className="text-white/70 text-[11px] font-sans sm:text-xs">{soundOn ? 'Som ON' : 'Som OFF'}</span>
+        </button>
+        <button
+          onClick={onToggleScoreboard}
+          className="bg-[#0d1117]/80 backdrop-blur-md border border-white/10 rounded-lg px-3 py-2 pointer-events-auto hover:bg-white/10 transition-colors"
+          title={showScoreboard ? 'Ocultar placar' : 'Mostrar placar'}
+        >
+          <span className="text-white/70 text-[11px] font-sans sm:text-xs">
+            {showScoreboard ? 'Placar ON' : 'Placar OFF'}
+          </span>
         </button>
       </div>
 
