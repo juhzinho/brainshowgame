@@ -711,7 +711,7 @@ function StealVotePanel({
   onVote: (targetId: string) => void
 }) {
   const hasVoted = stealVotes[playerId] !== undefined
-  const otherPlayers = players.filter(p => p.id !== playerId && !p.isEliminated && p.connected)
+  const otherPlayers = players.filter(p => p.id !== playerId && !p.isEliminated)
   const votedTargetId = stealVotes[playerId]
 
   // Count votes for display
@@ -735,45 +735,51 @@ function StealVotePanel({
         </div>
 
         <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
-          {otherPlayers.map(p => {
-            const isMyVote = votedTargetId === p.id
-            const voteCount = voteCounts[p.id] || 0
-            return (
-              <button
-                key={p.id}
-                onClick={() => {
-                  if (!hasVoted) {
-                    soundEngine.select()
-                    onVote(p.id)
-                  }
-                }}
-                disabled={hasVoted}
-                className={cn(
-                  'flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all font-sans',
-                  isMyVote
-                    ? 'bg-[#e94560]/20 border-[#e94560] shadow-[0_0_20px_rgba(233,69,96,0.2)]'
-                    : hasVoted
-                      ? 'bg-white/3 border-white/5 opacity-40 cursor-not-allowed'
-                      : 'bg-white/5 border-white/10 hover:bg-[#e94560]/10 hover:border-[#e94560]/40 cursor-pointer active:scale-95'
-                )}
-              >
-                <div
-                  className="w-4 h-4 rounded-full shrink-0"
-                  style={{ backgroundColor: p.color, boxShadow: `0 0 8px ${p.color}60` }}
-                />
-                <span className="text-white flex-1 text-sm text-left">{p.name}</span>
-                <span className="text-white/40 font-mono text-xs">{p.score} pts</span>
-                {voteCount > 0 && (
-                  <span className="bg-[#e94560]/30 text-[#e94560] text-xs font-bold px-2 py-0.5 rounded-full">
-                    {voteCount} voto{voteCount > 1 ? 's' : ''}
-                  </span>
-                )}
-                {isMyVote && (
-                  <span className="text-[#e94560] text-xs font-bold">Seu voto</span>
-                )}
-              </button>
-            )
-          })}
+          {otherPlayers.length > 0 ? (
+            otherPlayers.map(p => {
+              const isMyVote = votedTargetId === p.id
+              const voteCount = voteCounts[p.id] || 0
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    if (!hasVoted) {
+                      soundEngine.select()
+                      onVote(p.id)
+                    }
+                  }}
+                  disabled={hasVoted}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all font-sans',
+                    isMyVote
+                      ? 'bg-[#e94560]/20 border-[#e94560] shadow-[0_0_20px_rgba(233,69,96,0.2)]'
+                      : hasVoted
+                        ? 'bg-white/3 border-white/5 opacity-40 cursor-not-allowed'
+                        : 'bg-white/5 border-white/10 hover:bg-[#e94560]/10 hover:border-[#e94560]/40 cursor-pointer active:scale-95'
+                  )}
+                >
+                  <div
+                    className="w-4 h-4 rounded-full shrink-0"
+                    style={{ backgroundColor: p.color, boxShadow: `0 0 8px ${p.color}60` }}
+                  />
+                  <span className="text-white flex-1 text-sm text-left">{p.name}</span>
+                  <span className="text-white/40 font-mono text-xs">{p.score} pts</span>
+                  {voteCount > 0 && (
+                    <span className="bg-[#e94560]/30 text-[#e94560] text-xs font-bold px-2 py-0.5 rounded-full">
+                      {voteCount} voto{voteCount > 1 ? 's' : ''}
+                    </span>
+                  )}
+                  {isMyVote && (
+                    <span className="text-[#e94560] text-xs font-bold">Seu voto</span>
+                  )}
+                </button>
+              )
+            })
+          ) : (
+            <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-sans text-white/40">
+              Nenhum jogador disponivel para votar.
+            </p>
+          )}
         </div>
 
         {hasVoted && (
