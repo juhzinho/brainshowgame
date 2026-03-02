@@ -259,20 +259,32 @@ function resolveStealVote(room: Room) {
   })
 
   let maxVotes = 0
-  let victimId: string | null = null
+  const topCandidates: string[] = []
   Object.entries(voteCounts).forEach(([id, count]) => {
     if (count > maxVotes) {
       maxVotes = count
-      victimId = id
+      topCandidates.length = 0
+      topCandidates.push(id)
+    } else if (count === maxVotes) {
+      topCandidates.push(id)
     }
   })
 
-  if (!victimId || maxVotes === 0) {
+  if (maxVotes === 0) {
     room.stealVictimId = null
     room.stolenPoints = 0
     setPhase(room, 'steal-result', 'no-votes', 3000, 'Ninguem votou! Nenhum ponto roubado!', 'sad')
     return
   }
+
+  if (topCandidates.length !== 1) {
+    room.stealVictimId = null
+    room.stolenPoints = 0
+    setPhase(room, 'steal-result', 'tie', 3000, 'Empate na votacao! Nenhum ponto foi roubado!', 'sad')
+    return
+  }
+
+  const victimId = topCandidates[0]
 
   const victim = room.players.find((player) => player.id === victimId)
   if (!victim) {
