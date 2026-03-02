@@ -652,9 +652,6 @@ function SabotagePanel({
                     style={{ backgroundColor: p.color }}
                   />
                   <span className="truncate flex-1 text-left">{p.name}</span>
-                  {!p.connected && (
-                    <span className="text-[10px] text-white/30">OFF</span>
-                  )}
                 </button>
               ))
             ) : (

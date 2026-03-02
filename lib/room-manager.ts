@@ -334,7 +334,7 @@ export async function applySabotage(roomId: string, fromPlayerId: string, toPlay
     const fromPlayer = room.players.find((entry) => entry.id === fromPlayerId)
     const toPlayer = room.players.find((entry) => entry.id === toPlayerId)
     if (!fromPlayer || !toPlayer) return false
-    if (fromPlayer.isEliminated || toPlayer.isEliminated || !toPlayer.connected) return false
+    if (fromPlayer.isEliminated || toPlayer.isEliminated) return false
     if (room.answers[fromPlayerId] !== undefined || toPlayer.activeSabotageEffect) return false
 
     const sabotage = fromPlayer.sabotages.find((entry) => entry.type === sabotageType && !entry.used)
