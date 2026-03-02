@@ -327,7 +327,7 @@ export async function recordAnswer(roomId: string, playerId: string, answerIndex
 
 export async function applySabotage(roomId: string, fromPlayerId: string, toPlayerId: string, sabotageType: SabotageType): Promise<boolean> {
   return withRoomLock(roomId, async () => {
-    const room = await getStoredRoom(roomId)
+    const room = await getRoom(roomId)
     if (!room || room.state !== 'answering') return false
     if (!VALID_SABOTAGES.has(sabotageType) || fromPlayerId === toPlayerId) return false
 
@@ -376,7 +376,7 @@ export function removeConnection(roomId: string, playerId: string): void {
 }
 
 export async function broadcastState(roomId: string, room?: Room | null): Promise<void> {
-  const nextRoom = room ?? (await getStoredRoom(roomId))
+  const nextRoom = room ?? (await getRoom(roomId))
   if (!nextRoom) return
 
   const conns = connections.get(roomId) || []
