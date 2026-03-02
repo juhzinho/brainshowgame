@@ -173,7 +173,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom, isLoading, error }: MainMen
         {/* Footer info */}
         <div className="text-center mt-6">
           <p className="text-muted-foreground/50 text-xs font-sans">
-            10 rodadas - 10 categorias - 1000+ perguntas - 5 sabotagens!
+            5 rodadas - 10 categorias - 1000+ perguntas - 5 sabotagens!
           </p>
         </div>
       </div>

@@ -226,7 +226,7 @@ function showRoundScores(room: Room) {
 
 function maybeStartStealVote(room: Room): boolean {
   const eligiblePlayers = room.players.filter((player) => !player.isEliminated)
-  if (room.currentRound % 3 === 0 && eligiblePlayers.length >= 2) {
+  if ((room.currentRound === 3 || room.currentRound === 4) && eligiblePlayers.length >= 2) {
     room.stealVotes = {}
     room.stealVictimId = null
     room.stolenPoints = 0

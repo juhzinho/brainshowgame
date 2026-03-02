@@ -212,15 +212,7 @@ export const ROUND_CONFIGS: RoundConfig[] = [
   { type: 'classic', questionCount: 5, timePerQuestion: 15, pointsPerCorrect: 100, bonusForSpeed: true },
   { type: 'true-false', questionCount: 7, timePerQuestion: 8, pointsPerCorrect: 75, bonusForSpeed: false },
   { type: 'blitz', questionCount: 10, timePerQuestion: 6, pointsPerCorrect: 50, bonusForSpeed: true },
-  // steal vote happens after round 3
-  { type: 'classic', questionCount: 5, timePerQuestion: 14, pointsPerCorrect: 120, bonusForSpeed: true },
   { type: 'elimination', questionCount: 6, timePerQuestion: 12, pointsPerCorrect: 150, bonusForSpeed: false },
-  { type: 'true-false', questionCount: 8, timePerQuestion: 7, pointsPerCorrect: 80, bonusForSpeed: false },
-  // steal vote happens after round 6
-  { type: 'blitz', questionCount: 12, timePerQuestion: 5, pointsPerCorrect: 60, bonusForSpeed: true },
-  { type: 'classic', questionCount: 5, timePerQuestion: 13, pointsPerCorrect: 130, bonusForSpeed: true },
-  { type: 'elimination', questionCount: 7, timePerQuestion: 10, pointsPerCorrect: 175, bonusForSpeed: false },
-  // steal vote happens after round 9
   { type: 'final', questionCount: 5, timePerQuestion: 20, pointsPerCorrect: 200, bonusForSpeed: false },
 ]
 

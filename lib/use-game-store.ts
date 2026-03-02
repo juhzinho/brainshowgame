@@ -69,7 +69,7 @@ const initialState = {
   phase: 'waiting' as GamePhase,
   players: [],
   currentRound: 0,
-  totalRounds: 10,
+  totalRounds: 5,
   roundType: null,
   question: null,
   correctIndex: null,
