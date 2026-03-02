@@ -599,11 +599,12 @@ function SabotagePanel({
 
   const availableSabotages = myPlayer.sabotages.filter((s) => !s.used)
   const otherPlayers = players.filter((p) => p.id !== playerId && !p.isEliminated)
+  const sabotagesEnabled = phase === 'question' || phase === 'answering'
 
   if (availableSabotages.length === 0) return null
 
   const handleSabotageClick = (type: SabotageType) => {
-    if (phase !== 'answering') return
+    if (!sabotagesEnabled) return
     soundEngine.click()
     setSelectedType(type)
     setShowTargets(true)
@@ -639,7 +640,7 @@ function SabotagePanel({
         <p className="text-[10px] text-white/40 font-sans mb-2 uppercase tracking-wider">Sabotagens</p>
         {phase === 'question' && (
           <p className="mb-2 max-w-[180px] text-[10px] font-sans text-white/40">
-            Escolha sua sabotagem. Ela libera assim que a pergunta entrar em resposta.
+            Sabotagens liberadas antes da resposta.
           </p>
         )}
         <div className="flex flex-col gap-1.5">
@@ -653,7 +654,7 @@ function SabotagePanel({
                   'flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-xs font-sans',
                   selectedType === s.type
                     ? `border-[${color}] bg-[${color}]/20`
-                    : phase === 'answering'
+                    : sabotagesEnabled
                       ? 'bg-white/5 border-white/10 hover:bg-white/10'
                       : 'bg-white/5 border-white/10 opacity-60'
                 )}
@@ -662,7 +663,7 @@ function SabotagePanel({
                   backgroundColor: selectedType === s.type ? `${color}20` : undefined,
                 }}
                 title={SABOTAGE_DESCRIPTIONS[s.type]}
-                disabled={phase !== 'answering'}
+                disabled={!sabotagesEnabled}
               >
                 <span className="font-bold" style={{ color }}>{sabotageIcons[s.type]}</span>
                 <span className="text-white/80">{SABOTAGE_NAMES[s.type]}</span>

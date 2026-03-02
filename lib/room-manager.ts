@@ -328,7 +328,7 @@ export async function recordAnswer(roomId: string, playerId: string, answerIndex
 export async function applySabotage(roomId: string, fromPlayerId: string, toPlayerId: string, sabotageType: SabotageType): Promise<boolean> {
   return withRoomLock(roomId, async () => {
     const room = await getRoom(roomId)
-    if (!room || room.state !== 'answering') return false
+    if (!room || (room.state !== 'question' && room.state !== 'answering')) return false
     if (!VALID_SABOTAGES.has(sabotageType) || fromPlayerId === toPlayerId) return false
 
     const fromPlayer = room.players.find((entry) => entry.id === fromPlayerId)
