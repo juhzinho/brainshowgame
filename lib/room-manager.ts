@@ -31,7 +31,7 @@ const VALID_SABOTAGES = new Set<SabotageType>(['freeze', 'invert', 'steal', 'bli
 const PLAYER_NAME_MIN_LENGTH = 2
 const PLAYER_NAME_MAX_LENGTH = 15
 const ROOM_ID_LENGTH = 5
-const INACTIVE_THRESHOLD = 8000
+const INACTIVE_THRESHOLD = 18000
 
 function createPlayerSabotages() {
   return [
@@ -47,9 +47,16 @@ function applyPresenceToRoom(room: Room, presenceByPlayerId: Record<string, numb
   const now = Date.now()
 
   room.players.forEach((player) => {
-    const presenceTimestamp = presenceByPlayerId[player.id] ?? player.lastActiveAt ?? 0
-    player.lastActiveAt = presenceTimestamp || player.lastActiveAt || 0
-    player.connected = now - (player.lastActiveAt || 0) <= INACTIVE_THRESHOLD
+    const presenceTimestamp = presenceByPlayerId[player.id]
+    if (presenceTimestamp === undefined) {
+      const fallbackLastActiveAt = player.lastActiveAt || 0
+      player.lastActiveAt = fallbackLastActiveAt
+      player.connected = player.connected && now - fallbackLastActiveAt <= INACTIVE_THRESHOLD
+      return
+    }
+
+    player.lastActiveAt = presenceTimestamp
+    player.connected = now - presenceTimestamp <= INACTIVE_THRESHOLD
   })
 
   return room
@@ -199,6 +206,7 @@ export async function createRoom(hostName: string, usedQuestionIds: string[] = [
   }
 
   await setStoredRoom(room)
+  await setPlayerPresence(roomId, playerId, now)
   return { room, playerId, playerToken }
 }
 
@@ -238,6 +246,7 @@ export async function joinRoom(roomId: string, playerName: string): Promise<{ pl
     room.hostAnimation = 'point'
 
     await setStoredRoom(room)
+    await setPlayerPresence(roomId, playerId, now)
     return { player, room, playerToken }
   })
 }
@@ -366,14 +375,14 @@ export function removeConnection(roomId: string, playerId: string): void {
   connections.set(roomId, conns.filter((connection) => connection.playerId !== playerId))
 }
 
-export async function broadcastState(roomId: string): Promise<void> {
-  const room = await getStoredRoom(roomId)
-  if (!room) return
+export async function broadcastState(roomId: string, room?: Room | null): Promise<void> {
+  const nextRoom = room ?? (await getStoredRoom(roomId))
+  if (!nextRoom) return
 
   const conns = connections.get(roomId) || []
   const data = JSON.stringify({
     type: 'state-update',
-    data: buildClientState(room),
+    data: buildClientState(nextRoom),
     timestamp: Date.now(),
   })
 

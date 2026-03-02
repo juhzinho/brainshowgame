@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getRoom, deleteRoom, buildClientState, isRoomLockError, getPublicRoomState } from '@/lib/room-manager'
+import { deleteRoom, buildClientState, isRoomLockError } from '@/lib/room-manager'
 import { apiBusy, apiError } from '@/lib/api-response'
 import { auditLog } from '@/lib/audit'
 import { getPlayerTokenFromRequest, requireAuthorizedPlayer, enforceRateLimit, enforceSameOrigin } from '@/lib/api-auth'
@@ -19,14 +19,23 @@ export async function GET(
   const playerId = url.searchParams.get('playerId') || ''
   const playerToken = getPlayerTokenFromRequest(request)
 
-  await advanceRoom(roomId)
-  const room = await getRoom(roomId)
+  const room = await advanceRoom(roomId)
   if (!room) {
     return apiError('Sala nao encontrada', 404, rateLimit.headers)
   }
 
   if (!playerId) {
-    return NextResponse.json(await getPublicRoomState(roomId), { headers: rateLimit.headers })
+    const host = room.players.find((player) => player.isHost)
+    return NextResponse.json(
+      {
+        roomId: room.id,
+        hostName: host?.name || 'Desconhecido',
+        playerCount: room.players.length,
+        maxPlayers: room.maxPlayers,
+        state: room.state,
+      },
+      { headers: rateLimit.headers }
+    )
   }
 
   const auth = await requireAuthorizedPlayer(roomId, playerId, playerToken)

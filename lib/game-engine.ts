@@ -559,11 +559,9 @@ export async function advanceRoom(roomId: string): Promise<Room | null> {
     return getRoom(roomId)
   }
 
-  if (room) {
-    await broadcastState(roomId)
-    if (changed) {
-      await publishRoomEvent(roomId, 'room-updated', { state: buildClientState(room) })
-    }
+  if (room && changed) {
+    await broadcastState(roomId, room)
+    await publishRoomEvent(roomId, 'room-updated', { state: buildClientState(room) })
   }
 
   return room
