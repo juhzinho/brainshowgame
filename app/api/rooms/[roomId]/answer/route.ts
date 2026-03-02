@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { broadcastState, buildClientState, isRoomLockError, recordAnswer } from '@/lib/room-manager'
+import { buildClientState, getRoom, isRoomLockError, recordAnswer } from '@/lib/room-manager'
 import { answerSchema } from '@/lib/api-schemas'
 import { apiBusy, apiError } from '@/lib/api-response'
 import { getPlayerTokenFromRequest, requireAuthorizedPlayer, enforceRateLimit, enforceSameOrigin } from '@/lib/api-auth'
@@ -36,10 +36,13 @@ export async function POST(
       return apiError('Nao foi possivel registrar a resposta', 400, rateLimit.headers)
     }
 
-    await broadcastState(roomId)
     const room = await advanceRoom(roomId)
-    await publishRoomEvent(roomId, 'answer-submitted', room ? { state: buildClientState(room) } : undefined)
-    return NextResponse.json({ success: true }, { headers: rateLimit.headers })
+    const latestRoom = room ?? await getRoom(roomId)
+    await publishRoomEvent(roomId, 'answer-submitted', latestRoom ? { state: buildClientState(latestRoom) } : undefined)
+    return NextResponse.json(
+      { success: true, state: latestRoom ? buildClientState(latestRoom) : null },
+      { headers: rateLimit.headers }
+    )
   } catch (error) {
     if (isRoomLockError(error)) {
       return apiBusy(undefined, rateLimit.headers)

@@ -180,16 +180,23 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
     if (!roomId || !playerId || !playerToken) return
     selectAnswer(answerIndex)
     try {
-      await fetchWithBusyRetry(`/api/rooms/${roomId}/answer`, {
+      const res = await fetchWithBusyRetry(`/api/rooms/${roomId}/answer`, {
         method: 'POST',
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken, answerIndex }),
       })
+      if (res.ok) {
+        const data = await res.json()
+        if (data?.state) {
+          updateGameState(data.state)
+          return
+        }
+      }
       await refreshGameState()
     } catch {
       // ignore
     }
-  }, [roomId, playerId, playerToken, buildHeaders, fetchWithBusyRetry, refreshGameState, selectAnswer])
+  }, [roomId, playerId, playerToken, buildHeaders, fetchWithBusyRetry, refreshGameState, selectAnswer, updateGameState])
 
   // Send sabotage
   const sendSabotage = useCallback(async (targetPlayerId: string, sabotageType: SabotageType) => {
