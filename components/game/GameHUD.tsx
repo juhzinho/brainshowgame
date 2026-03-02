@@ -725,14 +725,27 @@ function StealVotePanel({
   onVote: (targetId: string) => void
 }) {
   const hasVoted = stealVotes[playerId] !== undefined
-  const otherPlayers = players.filter(p => p.id !== playerId && !p.isEliminated)
+  const eligiblePlayers = players.filter(p => !p.isEliminated)
+  const otherPlayers = eligiblePlayers.filter(p => p.id !== playerId)
   const votedTargetId = stealVotes[playerId]
+  const votesCast = Object.keys(stealVotes).length
 
   // Count votes for display
   const voteCounts: Record<string, number> = {}
   Object.values(stealVotes).forEach(targetId => {
     voteCounts[targetId] = (voteCounts[targetId] || 0) + 1
   })
+
+  const currentLeader = otherPlayers.reduce<{ player: Player | null; votes: number }>(
+    (best, player) => {
+      const votes = voteCounts[player.id] || 0
+      if (votes > best.votes) {
+        return { player, votes }
+      }
+      return best
+    },
+    { player: null, votes: 0 }
+  )
 
   return (
     <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-auto">
@@ -746,6 +759,14 @@ function StealVotePanel({
           <div className="mt-2 inline-flex items-center gap-2 bg-[#e94560]/20 border border-[#e94560]/40 rounded-full px-4 py-1.5">
             <span className="text-[#e94560] font-mono font-bold text-lg">{timer}s</span>
           </div>
+          <p className="mt-3 text-xs font-sans text-white/50">
+            Votos: {votesCast}/{eligiblePlayers.length}
+          </p>
+          <p className="mt-1 text-xs font-sans text-white/40">
+            {currentLeader.player && currentLeader.votes > 0
+              ? `Mais votado: ${currentLeader.player.name} (${currentLeader.votes} voto${currentLeader.votes > 1 ? 's' : ''})`
+              : 'Aguardando os primeiros votos...'}
+          </p>
         </div>
 
         <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
@@ -778,11 +799,9 @@ function StealVotePanel({
                   />
                   <span className="text-white flex-1 text-sm text-left">{p.name}</span>
                   <span className="text-white/40 font-mono text-xs">{p.score} pts</span>
-                  {voteCount > 0 && (
-                    <span className="bg-[#e94560]/30 text-[#e94560] text-xs font-bold px-2 py-0.5 rounded-full">
-                      {voteCount} voto{voteCount > 1 ? 's' : ''}
-                    </span>
-                  )}
+                  <span className="bg-[#e94560]/30 text-[#e94560] text-xs font-bold px-2 py-0.5 rounded-full min-w-[54px] text-center">
+                    {voteCount} voto{voteCount > 1 ? 's' : ''}
+                  </span>
                   {isMyVote && (
                     <span className="text-[#e94560] text-xs font-bold">Seu voto</span>
                   )}
@@ -798,7 +817,7 @@ function StealVotePanel({
 
         {hasVoted && (
           <p className="text-center text-white/40 font-sans text-xs mt-3">
-            Aguardando outros jogadores votarem...
+            Aguardando outros jogadores votarem... {votesCast}/{eligiblePlayers.length}
           </p>
         )}
       </div>
