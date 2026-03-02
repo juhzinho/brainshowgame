@@ -29,6 +29,8 @@ interface GameStore {
   answersMap: Record<string, number> | null
   timer: number
   phaseEndsAt: number | null
+  serverNow: number
+  serverOffsetMs: number
   hostMessage: string
   hostAnimation: HostAnimation
   eliminatedThisRound: string[]
@@ -74,6 +76,8 @@ const initialState = {
   answersMap: null,
   timer: 0,
   phaseEndsAt: null,
+  serverNow: 0,
+  serverOffsetMs: 0,
   hostMessage: '',
   hostAnimation: 'idle' as HostAnimation,
   eliminatedThisRound: [],
@@ -105,6 +109,7 @@ export const useGameStore = create<GameStore>((set) => ({
       const newPhase = state.phase ?? prev.phase
       const phaseChanged = newPhase !== prev.phase
       const incomingQuestion = state.question
+      const nextServerNow = typeof state.serverNow === 'number' ? state.serverNow : prev.serverNow
 
       if (incomingQuestion?.id && incomingQuestion.id !== prev.question?.id) {
         appendStoredQuestionHistory(incomingQuestion.id)
@@ -112,6 +117,7 @@ export const useGameStore = create<GameStore>((set) => ({
 
       return {
         ...state,
+        serverOffsetMs: typeof state.serverNow === 'number' ? nextServerNow - Date.now() : prev.serverOffsetMs,
         // Reset answer when phase changes to a new question
         selectedAnswer: phaseChanged && (newPhase === 'question' || newPhase === 'answering')
           ? null

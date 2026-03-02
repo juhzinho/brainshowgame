@@ -446,12 +446,12 @@ function finishGame(room: Room) {
 }
 
 function canFinishAnsweringEarly(room: Room): boolean {
-  const activePlayers = room.players.filter((player) => !player.isEliminated && player.connected)
+  const activePlayers = room.players.filter((player) => !player.isEliminated)
   return activePlayers.length > 0 && activePlayers.every((player) => room.answers[player.id] !== undefined)
 }
 
 function canFinishStealVoteEarly(room: Room): boolean {
-  const activePlayers = room.players.filter((player) => player.connected && !player.isEliminated)
+  const activePlayers = room.players.filter((player) => !player.isEliminated)
   return activePlayers.length > 0 && activePlayers.every((player) => room.stealVotes[player.id] !== undefined)
 }
 

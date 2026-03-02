@@ -27,6 +27,7 @@ export function GameHUD({ onAnswer, onSabotage, onStealVote, onCounterAttack, on
     correctIndex,
     timer,
     phaseEndsAt,
+    serverOffsetMs,
     hostMessage,
     playerId,
     selectedAnswer,
@@ -62,8 +63,9 @@ export function GameHUD({ onAnswer, onSabotage, onStealVote, onCounterAttack, on
       return timer
     }
 
-    return Math.max(0, Math.ceil((phaseEndsAt - timerTick) / 1000))
-  }, [phase, phaseEndsAt, timer, timerTick])
+    const adjustedNow = timerTick + serverOffsetMs
+    return Math.max(0, Math.ceil((phaseEndsAt - adjustedNow) / 1000))
+  }, [phase, phaseEndsAt, serverOffsetMs, timer, timerTick])
 
   // Sound effects based on phase changes
   useEffect(() => {

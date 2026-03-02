@@ -429,6 +429,7 @@ export function buildClientState(room: Room) {
     answersMap: room.state === 'reveal' ? { ...room.answers } : null,
     timer,
     phaseEndsAt: room.phaseEndsAt,
+    serverNow: now,
     hostMessage: room.hostMessage,
     hostAnimation: room.hostAnimation,
     eliminatedThisRound: room.eliminatedThisRound,
