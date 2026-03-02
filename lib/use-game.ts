@@ -11,6 +11,8 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
   const updateGameState = useGameStore((state) => state.updateGameState)
   const selectAnswer = useGameStore((state) => state.selectAnswer)
   const applyOptimisticSabotage = useGameStore((state) => state.applyOptimisticSabotage)
+  const currentPhase = useGameStore((state) => state.phase)
+  const currentTimer = useGameStore((state) => state.timer)
 
   const buildHeaders = useCallback(() => {
     const headers: HeadersInit = { 'Content-Type': 'application/json' }
@@ -20,11 +22,28 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
     return headers
   }, [playerToken])
 
+  const wait = useCallback((delayMs: number) => new Promise((resolve) => setTimeout(resolve, delayMs)), [])
+
+  const fetchWithBusyRetry = useCallback(async (input: RequestInfo | URL, init?: RequestInit) => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const res = await fetch(input, init)
+      if (res.status !== 409) {
+        return res
+      }
+
+      if (attempt < 2) {
+        await wait(120 + attempt * 180)
+      }
+    }
+
+    return fetch(input, init)
+  }, [wait])
+
   const refreshGameState = useCallback(async () => {
     if (!roomId || !playerId || !playerToken) return
 
     try {
-      const res = await fetch(`/api/rooms/${roomId}?playerId=${playerId}`, {
+      const res = await fetchWithBusyRetry(`/api/rooms/${roomId}?playerId=${playerId}`, {
         headers: playerToken ? { 'x-player-token': playerToken } : undefined,
         cache: 'no-store',
       })
@@ -43,7 +62,7 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
     } catch {
       setConnected(false)
     }
-  }, [roomId, playerId, playerToken, resetStore, setConnected, updateGameState])
+  }, [fetchWithBusyRetry, roomId, playerId, playerToken, resetStore, setConnected, updateGameState])
 
   useEffect(() => {
     if (!roomId) return
@@ -97,70 +116,44 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
     }
   }, [roomId, refreshGameState, setConnected, updateGameState])
 
-  // Poll as a fallback and to advance timer-driven phases in serverless runtime.
+  // Keep a light heartbeat so presence and recovery still work without hammering the room lock.
   useEffect(() => {
     if (!roomId || !playerId || !playerToken) return
 
     let active = true
-    let timeoutId: ReturnType<typeof setTimeout> | null = null
-
-    async function poll() {
-      if (!active || !roomId) return
-      try {
-        const res = await fetch(`/api/rooms/${roomId}?playerId=${playerId}`, {
-          headers: playerToken ? { 'x-player-token': playerToken } : undefined,
-          cache: 'no-store',
-        })
-        if (!res.ok) {
-          if (res.status === 401 || res.status === 404) {
-            resetStore()
-            return
-          }
-          scheduleNext(1200)
-          return
-        }
-        const data = await res.json()
-        if (active && data) {
-          setConnected(true)
-          updateGameState(data)
-          
-          const phase = data.phase || 'waiting'
-          const isActive = ['answering', 'steal-vote', 'counter-attack'].includes(phase)
-          const isWaiting = phase === 'waiting' || phase === 'finished'
-          const nextDelay = isActive ? 900 : isWaiting ? 3000 : 1500
-          scheduleNext(nextDelay)
-        } else {
-          scheduleNext(1500)
-        }
-      } catch {
-        if (active) setConnected(false)
-        scheduleNext(2000)
-      }
-    }
-
-    function scheduleNext(delay: number) {
+    const intervalId = setInterval(() => {
       if (!active) return
-      timeoutId = setTimeout(poll, delay)
-    }
+      void refreshGameState()
+    }, 5000)
 
-    // Initial fetch immediately
-    poll()
+    void refreshGameState()
 
     return () => {
       active = false
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-        timeoutId = null
-      }
+      clearInterval(intervalId)
     }
-  }, [roomId, playerId, playerToken, resetStore, setConnected, updateGameState])
+  }, [playerId, playerToken, refreshGameState, roomId])
+
+  // During timer-based phases, do one precise refresh near the phase deadline instead of rapid polling.
+  useEffect(() => {
+    if (!roomId || !playerId || !playerToken) return
+
+    const isTimedPhase = ['answering', 'steal-vote', 'counter-attack'].includes(currentPhase)
+    if (!isTimedPhase || currentTimer <= 0) return
+
+    const timeoutId = setTimeout(() => {
+      void refreshGameState()
+    }, Math.max(250, currentTimer * 1000 + 150))
+
+    return () => clearTimeout(timeoutId)
+  }, [currentPhase, currentTimer, playerId, playerToken, refreshGameState, roomId])
 
   // Send answer
   const sendAnswer = useCallback(async (answerIndex: number) => {
     if (!roomId || !playerId || !playerToken) return
     selectAnswer(answerIndex)
     try {
-      await fetch(`/api/rooms/${roomId}/answer`, {
+      await fetchWithBusyRetry(`/api/rooms/${roomId}/answer`, {
         method: 'POST',
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken, answerIndex }),
@@ -169,14 +162,14 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
     } catch {
       // ignore
     }
-  }, [roomId, playerId, playerToken, buildHeaders, refreshGameState, selectAnswer])
+  }, [roomId, playerId, playerToken, buildHeaders, fetchWithBusyRetry, refreshGameState, selectAnswer])
 
   // Send sabotage
   const sendSabotage = useCallback(async (targetPlayerId: string, sabotageType: SabotageType) => {
     if (!roomId || !playerId || !playerToken) return
     applyOptimisticSabotage(targetPlayerId, sabotageType)
     try {
-      const res = await fetch(`/api/rooms/${roomId}/sabotage`, {
+      const res = await fetchWithBusyRetry(`/api/rooms/${roomId}/sabotage`, {
         method: 'POST',
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken, targetPlayerId, sabotageType }),
@@ -193,13 +186,13 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
       // ignore
       await refreshGameState()
     }
-  }, [roomId, playerId, playerToken, applyOptimisticSabotage, buildHeaders, refreshGameState, updateGameState])
+  }, [roomId, playerId, playerToken, applyOptimisticSabotage, buildHeaders, fetchWithBusyRetry, refreshGameState, updateGameState])
 
   // Start game
   const startGame = useCallback(async () => {
     if (!roomId || !playerId || !playerToken) return
     try {
-      await fetch(`/api/rooms/${roomId}/start`, {
+      await fetchWithBusyRetry(`/api/rooms/${roomId}/start`, {
         method: 'POST',
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken }),
@@ -208,13 +201,13 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
     } catch {
       // ignore
     }
-  }, [roomId, playerId, playerToken, buildHeaders, refreshGameState])
+  }, [roomId, playerId, playerToken, buildHeaders, fetchWithBusyRetry, refreshGameState])
 
   // Mark ready
   const markReady = useCallback(async () => {
     if (!roomId || !playerId || !playerToken) return
     try {
-      await fetch(`/api/rooms/${roomId}/ready`, {
+      await fetchWithBusyRetry(`/api/rooms/${roomId}/ready`, {
         method: 'POST',
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken }),
@@ -223,13 +216,13 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
     } catch {
       // ignore
     }
-  }, [roomId, playerId, playerToken, buildHeaders, refreshGameState])
+  }, [roomId, playerId, playerToken, buildHeaders, fetchWithBusyRetry, refreshGameState])
 
   // Set categories
   const setCategories = useCallback(async (categories: string[]) => {
     if (!roomId || !playerId || !playerToken) return
     try {
-      await fetch(`/api/rooms/${roomId}/categories`, {
+      await fetchWithBusyRetry(`/api/rooms/${roomId}/categories`, {
         method: 'POST',
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken, categories }),
@@ -238,13 +231,13 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
     } catch {
       // ignore
     }
-  }, [roomId, playerId, playerToken, buildHeaders, refreshGameState])
+  }, [roomId, playerId, playerToken, buildHeaders, fetchWithBusyRetry, refreshGameState])
 
   // Submit steal vote
   const submitStealVote = useCallback(async (targetId: string) => {
     if (!roomId || !playerId || !playerToken) return
     try {
-      await fetch(`/api/rooms/${roomId}/steal-vote`, {
+      await fetchWithBusyRetry(`/api/rooms/${roomId}/steal-vote`, {
         method: 'POST',
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken, targetId }),
@@ -253,13 +246,13 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
     } catch {
       // ignore
     }
-  }, [roomId, playerId, playerToken, buildHeaders, refreshGameState])
+  }, [roomId, playerId, playerToken, buildHeaders, fetchWithBusyRetry, refreshGameState])
 
   // Submit counter-attack (card index)
   const submitCounterAttack = useCallback(async (cardIndex: number) => {
     if (!roomId || !playerId || !playerToken) return
     try {
-      await fetch(`/api/rooms/${roomId}/counter-attack`, {
+      await fetchWithBusyRetry(`/api/rooms/${roomId}/counter-attack`, {
         method: 'POST',
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken, cardIndex }),
@@ -268,13 +261,13 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
     } catch {
       // ignore
     }
-  }, [roomId, playerId, playerToken, buildHeaders, refreshGameState])
+  }, [roomId, playerId, playerToken, buildHeaders, fetchWithBusyRetry, refreshGameState])
 
   // Restart game (keeps used question IDs to avoid repeats)
   const restartGame = useCallback(async () => {
     if (!roomId || !playerId || !playerToken) return
     try {
-      await fetch(`/api/rooms/${roomId}/restart`, {
+      await fetchWithBusyRetry(`/api/rooms/${roomId}/restart`, {
         method: 'POST',
         headers: buildHeaders(),
         body: JSON.stringify({ playerId, playerToken }),
@@ -283,7 +276,7 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
     } catch {
       // ignore
     }
-  }, [roomId, playerId, playerToken, buildHeaders, refreshGameState])
+  }, [roomId, playerId, playerToken, buildHeaders, fetchWithBusyRetry, refreshGameState])
 
   return {
     sendAnswer,
