@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getRoom, deleteRoom, buildClientState, getPublicRoomState, isRoomLockError, markPlayerActive } from '@/lib/room-manager'
+import { getRoom, deleteRoom, buildClientState, isRoomLockError, getPublicRoomState } from '@/lib/room-manager'
 import { apiBusy, apiError } from '@/lib/api-response'
 import { auditLog } from '@/lib/audit'
 import { getPlayerTokenFromRequest, requireAuthorizedPlayer, enforceRateLimit, enforceSameOrigin } from '@/lib/api-auth'
@@ -41,17 +41,7 @@ export async function GET(
     return apiError(auth.error, auth.status, rateLimit.headers)
   }
 
-  // Mark player as active on every poll
-  try {
-    await markPlayerActive(roomId, playerId)
-  } catch (error) {
-    if (!isRoomLockError(error)) {
-      throw error
-    }
-  }
-  const updatedRoom = await getRoom(roomId)
-
-  return NextResponse.json(buildClientState(updatedRoom || room), { headers: rateLimit.headers })
+  return NextResponse.json(buildClientState(room), { headers: rateLimit.headers })
 }
 
 export async function DELETE(

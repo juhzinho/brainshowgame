@@ -64,6 +64,20 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
     }
   }, [fetchWithBusyRetry, roomId, playerId, playerToken, resetStore, setConnected, updateGameState])
 
+  const sendHeartbeat = useCallback(async () => {
+    if (!roomId || !playerId || !playerToken) return
+
+    try {
+      await fetchWithBusyRetry(`/api/rooms/${roomId}/heartbeat`, {
+        method: 'POST',
+        headers: buildHeaders(),
+        body: JSON.stringify({ playerId, playerToken }),
+      })
+    } catch {
+      // ignore heartbeat failures; realtime and room refresh will recover
+    }
+  }, [buildHeaders, fetchWithBusyRetry, playerId, playerToken, roomId])
+
   useEffect(() => {
     if (!roomId) return
 
@@ -116,7 +130,7 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
     }
   }, [roomId, refreshGameState, setConnected, updateGameState])
 
-  // Keep a light heartbeat so presence and recovery still work without hammering the room lock.
+  // Keep a light room-state refresh for recovery.
   useEffect(() => {
     if (!roomId || !playerId || !playerToken) return
 
@@ -124,7 +138,7 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
     const intervalId = setInterval(() => {
       if (!active) return
       void refreshGameState()
-    }, 5000)
+    }, 7000)
 
     void refreshGameState()
 
@@ -133,6 +147,19 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
       clearInterval(intervalId)
     }
   }, [playerId, playerToken, refreshGameState, roomId])
+
+  // Presence heartbeat is separated from room-state reads to reduce lock contention.
+  useEffect(() => {
+    if (!roomId || !playerId || !playerToken) return
+
+    const intervalId = setInterval(() => {
+      void sendHeartbeat()
+    }, 6000)
+
+    void sendHeartbeat()
+
+    return () => clearInterval(intervalId)
+  }, [playerId, playerToken, roomId, sendHeartbeat])
 
   // During timer-based phases, do one precise refresh near the phase deadline instead of rapid polling.
   useEffect(() => {

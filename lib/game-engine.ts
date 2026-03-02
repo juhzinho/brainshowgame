@@ -8,7 +8,7 @@ import {
   withRoomLock,
 } from './room-manager'
 import { publishRoomEvent } from './ably'
-import { getQuestionsForRound } from './questions'
+import { getQuestionsForRound } from './question-bank'
 import type { Room } from './game-state'
 import { ALL_COUNTER_ATTACKS, ROUND_DESCRIPTIONS, ROUND_NAMES } from './game-state'
 

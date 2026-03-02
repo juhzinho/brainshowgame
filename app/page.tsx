@@ -26,6 +26,7 @@ function HomeContent() {
     roomId,
     playerId,
     playerToken,
+    connected,
     phase,
     players,
     hostAnimation,
@@ -213,8 +214,10 @@ function HomeContent() {
       {/* Connection indicator with invite link */}
       <div className="absolute bottom-4 left-4 z-10">
         <div className="flex items-center gap-2 bg-card/60 backdrop-blur-sm rounded-full px-3 py-1.5">
-          <div className="w-2 h-2 rounded-full bg-[#2ECC40] animate-pulse" />
-          <span className="text-muted-foreground text-xs font-sans">Sala: {roomId}</span>
+          <div className={`w-2 h-2 rounded-full ${connected ? 'bg-[#2ECC40] animate-pulse' : 'bg-[#ff851b]'}`} />
+          <span className="text-muted-foreground text-xs font-sans">
+            {connected ? `Sala: ${roomId}` : `Reconectando sala ${roomId}...`}
+          </span>
         </div>
       </div>
     </main>

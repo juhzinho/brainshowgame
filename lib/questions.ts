@@ -1,6 +1,6 @@
 import type { Question } from './game-state'
 
-const allQuestions: Question[] = [
+export const allQuestions: Question[] = [
   // ==========================================
   // MATEMATICA (30 perguntas)
   // ==========================================
@@ -3142,7 +3142,7 @@ const allQuestions: Question[] = [
   { id: 'tec_h100', category: 'Tecnologia', text: 'Qual e o design pattern mais usado para interfaces?', options: ['Singleton', 'Factory', 'Observer', 'MVC'], correctIndex: 3, difficulty: 'hard' },
 ];
 
-const trueFalseQuestions: Question[] = [
+export const trueFalseQuestions: Question[] = [
   { id: 'tf1', category: 'Verdadeiro ou Falso', text: 'O Sol e uma estrela.', options: ['Verdadeiro', 'Falso'], correctIndex: 0, difficulty: 'easy' },
   { id: 'tf2', category: 'Verdadeiro ou Falso', text: 'O Brasil tem 26 estados.', options: ['Verdadeiro', 'Falso'], correctIndex: 0, difficulty: 'easy' },
   { id: 'tf3', category: 'Verdadeiro ou Falso', text: 'A agua ferve a 90 graus Celsius.', options: ['Verdadeiro', 'Falso'], correctIndex: 1, difficulty: 'easy' },
