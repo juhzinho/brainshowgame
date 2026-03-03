@@ -47,6 +47,7 @@ export function WaitingRoom({ onStart, onReady, onSetCategories, onKickPlayer }:
   const activeCats = selectedCategories || []
 
   const [linkCopied, setLinkCopied] = useState(false)
+  const [kickTarget, setKickTarget] = useState<{ id: string; name: string } | null>(null)
 
   const inviteLink = typeof window !== 'undefined'
     ? `${window.location.origin}/join/${roomId}`
@@ -132,7 +133,7 @@ export function WaitingRoom({ onStart, onReady, onSetCategories, onKickPlayer }:
                   )}
                   {isHost && !p.isHost && (
                     <button
-                      onClick={() => onKickPlayer(p.id)}
+                      onClick={() => setKickTarget({ id: p.id, name: p.name })}
                       className="ml-1 rounded-md border border-[#e94560]/40 bg-[#e94560]/10 px-2 py-1 text-[10px] font-bold text-[#e94560] transition-colors hover:bg-[#e94560]/20"
                     >
                       Expulsar
@@ -248,6 +249,34 @@ export function WaitingRoom({ onStart, onReady, onSetCategories, onKickPlayer }:
           )}
         </div>
       </div>
+
+      {kickTarget && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center rounded-2xl bg-black/60 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-[#e94560]/30 bg-card/95 p-5 shadow-2xl backdrop-blur-xl">
+            <h3 className="text-foreground font-sans text-lg font-bold">Confirmar expulsao</h3>
+            <p className="mt-2 text-sm font-sans text-muted-foreground">
+              Deseja expulsar <span className="font-bold text-foreground">{kickTarget.name}</span> da sala?
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={() => setKickTarget(null)}
+                className="flex-1 rounded-xl border border-border bg-secondary/40 px-4 py-2.5 text-sm font-bold text-foreground transition-colors hover:bg-secondary/70"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  onKickPlayer(kickTarget.id)
+                  setKickTarget(null)
+                }}
+                className="flex-1 rounded-xl border border-[#e94560]/40 bg-[#e94560] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#e94560]/85"
+              >
+                Expulsar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
