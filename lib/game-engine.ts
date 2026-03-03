@@ -12,6 +12,8 @@ import { getQuestionsForRound } from './question-bank'
 import type { Room } from './game-state'
 import { ALL_COUNTER_ATTACKS, ROUND_DESCRIPTIONS, ROUND_NAMES, STEAL_VOTE_ROUNDS } from './game-state'
 
+const ANSWER_SUBMISSION_GRACE_MS = 1500
+
 function shuffle<T>(items: T[]): T[] {
   const copy = [...items]
   for (let index = copy.length - 1; index > 0; index--) {
@@ -485,7 +487,13 @@ function advanceRoomState(room: Room): boolean {
     return false
   }
 
-  if (room.state === 'answering' && (canFinishAnsweringEarly(room) || (room.phaseEndsAt !== null && now >= room.phaseEndsAt))) {
+  if (
+    room.state === 'answering' &&
+    (
+      canFinishAnsweringEarly(room) ||
+      (room.phaseEndsAt !== null && now >= room.phaseEndsAt + ANSWER_SUBMISSION_GRACE_MS)
+    )
+  ) {
     scoreCurrentQuestion(room)
     return true
   }

@@ -10,6 +10,7 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
   const setConnected = useGameStore((state) => state.setConnected)
   const updateGameState = useGameStore((state) => state.updateGameState)
   const selectAnswer = useGameStore((state) => state.selectAnswer)
+  const resetAnswer = useGameStore((state) => state.resetAnswer)
   const applyOptimisticSabotage = useGameStore((state) => state.applyOptimisticSabotage)
   const currentPhase = useGameStore((state) => state.phase)
   const currentTimer = useGameStore((state) => state.timer)
@@ -214,12 +215,15 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
           updateGameState(data.state)
           return
         }
+        await refreshGameState()
+        return
       }
+      resetAnswer()
       await refreshGameState()
     } catch {
-      // ignore
+      resetAnswer()
     }
-  }, [roomId, playerId, playerToken, buildHeaders, fetchWithBusyRetry, refreshGameState, selectAnswer, updateGameState])
+  }, [roomId, playerId, playerToken, buildHeaders, fetchWithBusyRetry, refreshGameState, resetAnswer, selectAnswer, updateGameState])
 
   // Send sabotage
   const sendSabotage = useCallback(async (targetPlayerId: string, sabotageType: SabotageType) => {
