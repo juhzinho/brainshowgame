@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
-import { buildClientState, getRoom, isRoomLockError, recordAnswer } from '@/lib/room-manager'
+import { buildClientState, isRoomLockError } from '@/lib/room-manager'
 import { answerSchema } from '@/lib/api-schemas'
 import { apiBusy, apiError } from '@/lib/api-response'
 import { getPlayerTokenFromRequest, requireAuthorizedPlayer, enforceRateLimit, enforceSameOrigin } from '@/lib/api-auth'
-import { advanceRoom } from '@/lib/game-engine'
+import { advanceRoom, submitAnswerAtomically } from '@/lib/game-engine'
 import { publishRoomEvent } from '@/lib/ably'
 
 export async function POST(
@@ -25,19 +25,17 @@ export async function POST(
   const { playerId, playerToken: bodyPlayerToken, answerIndex } = parsed.data
 
   try {
-    await advanceRoom(roomId)
     const auth = await requireAuthorizedPlayer(roomId, playerId, getPlayerTokenFromRequest(request, bodyPlayerToken))
     if (!auth.ok) {
       return apiError(auth.error, auth.status, rateLimit.headers)
     }
 
-    const recorded = await recordAnswer(roomId, playerId, answerIndex)
-    if (!recorded) {
-      return apiError('Nao foi possivel registrar a resposta', 400, rateLimit.headers)
+    const result = await submitAnswerAtomically(roomId, playerId, answerIndex)
+    if (!result.success) {
+      return apiError(result.reason || 'Nao foi possivel registrar a resposta', 400, rateLimit.headers)
     }
 
-    const room = await advanceRoom(roomId)
-    const latestRoom = room ?? await getRoom(roomId)
+    const latestRoom = result.room ?? await advanceRoom(roomId)
     await publishRoomEvent(roomId, 'answer-submitted', latestRoom ? { state: buildClientState(latestRoom) } : undefined)
     return NextResponse.json(
       { success: true, state: latestRoom ? buildClientState(latestRoom) : null },

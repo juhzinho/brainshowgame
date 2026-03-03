@@ -470,6 +470,10 @@ function canFinishStealVoteEarly(room: Room): boolean {
   return activePlayers.length > 0 && activePlayers.every((player) => room.stealVotes[player.id] !== undefined)
 }
 
+function isAnswerWindowClosed(room: Room, now: number): boolean {
+  return room.phaseEndsAt !== null && now >= room.phaseEndsAt + ANSWER_SUBMISSION_GRACE_MS
+}
+
 function clearExpiredSabotages(room: Room) {
   const now = Date.now()
   room.players.forEach((player) => {
@@ -491,7 +495,7 @@ function advanceRoomState(room: Room): boolean {
     room.state === 'answering' &&
     (
       canFinishAnsweringEarly(room) ||
-      (room.phaseEndsAt !== null && now >= room.phaseEndsAt + ANSWER_SUBMISSION_GRACE_MS)
+      isAnswerWindowClosed(room, now)
     )
   ) {
     scoreCurrentQuestion(room)
@@ -583,6 +587,84 @@ export async function advanceRoom(roomId: string): Promise<Room | null> {
   if (room && changed) {
     await broadcastState(roomId, room)
     await publishRoomEvent(roomId, 'room-updated', { state: buildClientState(room) })
+  }
+
+  return room
+}
+
+export async function submitAnswerAtomically(
+  roomId: string,
+  playerId: string,
+  answerIndex: number
+): Promise<{ success: boolean; room: Room | null; reason?: string }> {
+  let changed = false
+
+  const room = await withRoomLock(roomId, async () => {
+    const current = await getRoom(roomId)
+    if (!current) {
+      return { success: false, room: null, reason: 'Sala nao encontrada' } as const
+    }
+
+    while (advanceRoomState(current)) {
+      changed = true
+    }
+
+    if (current.state !== 'answering') {
+      if (changed) {
+        await saveRoom(current)
+      }
+      return { success: false, room: current, reason: 'A pergunta ja foi encerrada' } as const
+    }
+
+    if (!Number.isInteger(answerIndex)) {
+      return { success: false, room: current, reason: 'Resposta invalida' } as const
+    }
+
+    const player = current.players.find((entry) => entry.id === playerId)
+    if (!player || player.isEliminated || !current.currentQuestion) {
+      return { success: false, room: current, reason: 'Jogador ou pergunta invalida' } as const
+    }
+
+    if (current.answers[playerId] !== undefined) {
+      return { success: false, room: current, reason: 'Resposta ja registrada' } as const
+    }
+
+    if (answerIndex < 0 || answerIndex >= current.currentQuestion.options.length) {
+      return { success: false, room: current, reason: 'Resposta invalida' } as const
+    }
+
+    clearExpiredSabotages(current)
+    const refreshedPlayer = current.players.find((entry) => entry.id === playerId)
+    if (!refreshedPlayer) {
+      return { success: false, room: current, reason: 'Jogador invalido' } as const
+    }
+
+    if (refreshedPlayer.activeSabotageEffect?.type === 'freeze') {
+      return { success: false, room: current, reason: 'Jogador congelado' } as const
+    }
+
+    const now = Date.now()
+    if (isAnswerWindowClosed(current, now)) {
+      scoreCurrentQuestion(current)
+      changed = true
+      await saveRoom(current)
+      return { success: false, room: current, reason: 'A pergunta ja foi encerrada' } as const
+    }
+
+    current.answers[playerId] = answerIndex
+    current.answerTimestamps[playerId] = now
+    changed = true
+
+    if (canFinishAnsweringEarly(current) || isAnswerWindowClosed(current, now)) {
+      scoreCurrentQuestion(current)
+    }
+
+    await saveRoom(current)
+    return { success: true, room: current } as const
+  })
+
+  if (room.room && changed) {
+    await broadcastState(roomId, room.room)
   }
 
   return room
