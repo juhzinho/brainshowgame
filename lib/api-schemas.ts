@@ -45,3 +45,7 @@ export const stealVoteSchema = playerAuthSchema.extend({
 export const counterAttackSchema = playerAuthSchema.extend({
   cardIndex: z.number().int().min(0).max(4),
 })
+
+export const kickPlayerSchema = playerAuthSchema.extend({
+  targetPlayerId: z.string().uuid(),
+})

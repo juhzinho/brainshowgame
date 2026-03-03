@@ -106,6 +106,18 @@ export const useGameStore = create<GameStore>((set) => ({
 
   updateGameState: (state) =>
     set((prev) => {
+      const nextPlayers = Array.isArray(state.players) ? state.players : prev.players
+      const currentPlayerStillPresent =
+        !prev.playerId || nextPlayers.some((player) => player.id === prev.playerId)
+
+      if (!currentPlayerStillPresent) {
+        clearStoredSession()
+        return {
+          ...initialState,
+          connected: false,
+        }
+      }
+
       const newPhase = state.phase ?? prev.phase
       const phaseChanged = newPhase !== prev.phase
       const incomingQuestion = state.question

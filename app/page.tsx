@@ -55,7 +55,7 @@ function HomeContent() {
     }
   }, [searchParams, roomId, setConnection])
 
-  const { sendAnswer, sendSabotage, startGame, restartGame, markReady, setCategories, submitStealVote, submitCounterAttack } = useGame(roomId, playerId, playerToken)
+  const { sendAnswer, sendSabotage, kickPlayer, startGame, restartGame, markReady, setCategories, submitStealVote, submitCounterAttack } = useGame(roomId, playerId, playerToken)
 
   // Wrap counterAttack to match the card-based API
   const handleCounterAttack = (cardIndex: number) => {
@@ -164,7 +164,7 @@ function HomeContent() {
 
       {/* Waiting Room Overlay */}
       {phase === 'waiting' && (
-        <WaitingRoom onStart={startGame} onReady={markReady} onSetCategories={setCategories} />
+        <WaitingRoom onStart={startGame} onReady={markReady} onSetCategories={setCategories} onKickPlayer={kickPlayer} />
       )}
 
       {/* Game HUD (questions, sabotage, scores) */}

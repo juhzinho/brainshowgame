@@ -328,6 +328,48 @@ export async function setPlayerReady(roomId: string, playerId: string): Promise<
   })
 }
 
+export async function kickPlayer(roomId: string, hostId: string, targetPlayerId: string): Promise<Room | null> {
+  return withRoomLock(roomId, async () => {
+    const room = await getStoredRoom(roomId)
+    if (!room || room.state !== 'waiting') return null
+    if (room.hostId !== hostId || hostId === targetPlayerId) return null
+
+    const host = room.players.find((player) => player.id === hostId && player.isHost)
+    const target = room.players.find((player) => player.id === targetPlayerId && !player.isHost)
+    if (!host || !target) return null
+
+    room.players = room.players.filter((player) => player.id !== targetPlayerId)
+    delete room.playerTokens[targetPlayerId]
+    delete room.answers[targetPlayerId]
+    delete room.answerTimestamps[targetPlayerId]
+    delete room.stealVotes[targetPlayerId]
+
+    Object.keys(room.stealVotes).forEach((voterId) => {
+      if (room.stealVotes[voterId] === targetPlayerId) {
+        delete room.stealVotes[voterId]
+      }
+    })
+
+    if (room.stealVictimId === targetPlayerId) {
+      room.stealVictimId = null
+      room.stolenPoints = 0
+    }
+
+    if (room.counterAttackTargetId === targetPlayerId) {
+      room.counterAttackTargetId = null
+      room.counterAttackCards = []
+      room.chosenCardIndex = null
+    }
+
+    room.eliminatedThisRound = room.eliminatedThisRound.filter((playerId) => playerId !== targetPlayerId)
+    room.hostMessage = `${target.name} foi expulso da sala por ${host.name}.`
+    room.hostAnimation = 'point'
+
+    await setStoredRoom(room)
+    return room
+  })
+}
+
 export async function recordAnswer(roomId: string, playerId: string, answerIndex: number): Promise<boolean> {
   return withRoomLock(roomId, async () => {
     const room = await getStoredRoom(roomId)

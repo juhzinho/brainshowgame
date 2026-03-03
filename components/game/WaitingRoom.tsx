@@ -10,9 +10,10 @@ interface WaitingRoomProps {
   onStart: () => void
   onReady: () => void
   onSetCategories: (categories: string[]) => void
+  onKickPlayer: (targetPlayerId: string) => void
 }
 
-export function WaitingRoom({ onStart, onReady, onSetCategories }: WaitingRoomProps) {
+export function WaitingRoom({ onStart, onReady, onSetCategories, onKickPlayer }: WaitingRoomProps) {
   const { players, playerId, roomId, selectedCategories } = useGameStore()
 
   const myPlayer = useMemo(
@@ -128,6 +129,14 @@ export function WaitingRoom({ onStart, onReady, onSetCategories }: WaitingRoomPr
                   )}
                   {p.isReady && (
                     <span className="text-[#2ECC40] text-xs shrink-0">Pronto</span>
+                  )}
+                  {isHost && !p.isHost && (
+                    <button
+                      onClick={() => onKickPlayer(p.id)}
+                      className="ml-1 rounded-md border border-[#e94560]/40 bg-[#e94560]/10 px-2 py-1 text-[10px] font-bold text-[#e94560] transition-colors hover:bg-[#e94560]/20"
+                    >
+                      Expulsar
+                    </button>
                   )}
                 </div>
               ))}

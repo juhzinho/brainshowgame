@@ -78,6 +78,29 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
     }
   }, [buildHeaders, fetchWithBusyRetry, playerId, playerToken, roomId])
 
+  const kickPlayer = useCallback(async (targetPlayerId: string) => {
+    if (!roomId || !playerId || !playerToken) return
+    try {
+      const res = await fetchWithBusyRetry(`/api/rooms/${roomId}/kick`, {
+        method: 'POST',
+        headers: buildHeaders(),
+        body: JSON.stringify({ playerId, playerToken, targetPlayerId }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        if (data?.state) {
+          updateGameState(data.state)
+          return
+        }
+      }
+
+      await refreshGameState()
+    } catch {
+      await refreshGameState()
+    }
+  }, [roomId, playerId, playerToken, buildHeaders, fetchWithBusyRetry, refreshGameState, updateGameState])
+
   useEffect(() => {
     if (!roomId) return
 
@@ -322,6 +345,7 @@ export function useGame(roomId: string | null, playerId: string | null, playerTo
   return {
     sendAnswer,
     sendSabotage,
+    kickPlayer,
     startGame,
     restartGame,
     markReady,
