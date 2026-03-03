@@ -233,7 +233,7 @@ function maybeStartStealVote(room: Room): boolean {
     room.counterAttackTargetId = null
     room.counterAttackCards = []
     room.chosenCardIndex = null
-    setPhase(room, 'steal-vote', null, 15000, 'Hora do Roubo! Vote em quem quer roubar os pontos!', 'point')
+    setPhase(room, 'steal-vote', null, 10000, 'Hora do Roubo! Vote em quem quer roubar os pontos!', 'point')
     return true
   }
 

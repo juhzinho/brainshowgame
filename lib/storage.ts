@@ -10,6 +10,7 @@ const globalForStorage = globalThis as unknown as {
   __brainshow_rooms_fallback?: Map<string, Room>
   __brainshow_locks_fallback?: Map<string, { token: string; expiresAt: number }>
   __brainshow_presence_fallback?: Map<string, Map<string, number>>
+  __brainshow_question_history_fallback?: Map<string, string[]>
 }
 
 if (!globalForStorage.__brainshow_rooms_fallback) {
@@ -20,6 +21,9 @@ if (!globalForStorage.__brainshow_locks_fallback) {
 }
 if (!globalForStorage.__brainshow_presence_fallback) {
   globalForStorage.__brainshow_presence_fallback = new Map<string, Map<string, number>>()
+}
+if (!globalForStorage.__brainshow_question_history_fallback) {
+  globalForStorage.__brainshow_question_history_fallback = new Map<string, string[]>()
 }
 
 function getRedisConfig() {
@@ -65,6 +69,10 @@ function getLockKey(roomId: string) {
 
 function getPresenceKey(roomId: string) {
   return `brainshow:presence:${roomId}`
+}
+
+function getQuestionHistoryKey(historyOwnerId: string) {
+  return `brainshow:question-history:${historyOwnerId}`
 }
 
 export function isPersistentStorageEnabled(): boolean {
@@ -176,4 +184,40 @@ export async function getRoomPresence(roomId: string): Promise<Record<string, nu
   return Object.fromEntries(
     Object.entries(raw).map(([playerId, timestamp]) => [playerId, Number(timestamp) || 0])
   )
+}
+
+export async function getQuestionHistory(historyOwnerId: string): Promise<string[]> {
+  if (!historyOwnerId) return []
+
+  const config = getRedisConfig()
+  if (!config) {
+    return globalForStorage.__brainshow_question_history_fallback!.get(historyOwnerId) || []
+  }
+
+  const raw = await runRedisCommand<string>('GET', getQuestionHistoryKey(historyOwnerId))
+  if (!raw) return []
+
+  try {
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((entry): entry is string => typeof entry === 'string')
+  } catch {
+    return []
+  }
+}
+
+export async function setQuestionHistory(historyOwnerId: string, questionIds: string[]): Promise<void> {
+  if (!historyOwnerId) return
+
+  const sanitized = Array.from(
+    new Set(questionIds.filter((entry): entry is string => typeof entry === 'string'))
+  ).slice(-3000)
+
+  const config = getRedisConfig()
+  if (!config) {
+    globalForStorage.__brainshow_question_history_fallback!.set(historyOwnerId, sanitized)
+    return
+  }
+
+  await runRedisCommand('SET', getQuestionHistoryKey(historyOwnerId), JSON.stringify(sanitized))
 }

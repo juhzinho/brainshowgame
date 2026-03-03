@@ -116,6 +116,7 @@ export const ALL_COUNTER_ATTACKS: CounterAttackCard[] = [
 export interface Room {
   id: string
   hostId: string
+  historyOwnerId: string | null
   players: Player[]
   maxPlayers: number
   state: GamePhase

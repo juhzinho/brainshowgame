@@ -5,17 +5,25 @@ type Difficulty = Question['difficulty']
 
 type QuestionIndex = {
   all: Question[]
+  byId: Map<string, Question>
   byCategory: Map<string, Question[]>
   byDifficulty: Map<Difficulty, Question[]>
   byCategoryAndDifficulty: Map<string, Map<Difficulty, Question[]>>
 }
 
+function normalizePromptKey(question: Pick<Question, 'category' | 'text'>): string {
+  return `${question.category}::${question.text.trim().toLowerCase()}`
+}
+
 function buildQuestionIndex(source: Question[]): QuestionIndex {
+  const byId = new Map<string, Question>()
   const byCategory = new Map<string, Question[]>()
   const byDifficulty = new Map<Difficulty, Question[]>()
   const byCategoryAndDifficulty = new Map<string, Map<Difficulty, Question[]>>()
 
   source.forEach((question) => {
+    byId.set(question.id, question)
+
     const categoryQuestions = byCategory.get(question.category) || []
     categoryQuestions.push(question)
     byCategory.set(question.category, categoryQuestions)
@@ -33,6 +41,7 @@ function buildQuestionIndex(source: Question[]): QuestionIndex {
 
   return {
     all: source,
+    byId,
     byCategory,
     byDifficulty,
     byCategoryAndDifficulty,
@@ -64,6 +73,15 @@ function dedupeQuestions(questions: Question[]): Question[] {
 const standardIndex = buildQuestionIndex(allQuestions)
 const trueFalseIndex = buildQuestionIndex(trueFalseQuestions)
 
+function getUsedPromptKeys(index: QuestionIndex, usedIds: string[]): Set<string> {
+  return new Set(
+    usedIds
+      .map((usedId) => index.byId.get(usedId))
+      .filter((question): question is Question => Boolean(question))
+      .map((question) => normalizePromptKey(question))
+  )
+}
+
 function getScopedQuestions(index: QuestionIndex, categories?: string[], difficulty?: string): Question[] {
   if (!categories?.length && !difficulty) {
     return index.all
@@ -82,22 +100,35 @@ function getScopedQuestions(index: QuestionIndex, categories?: string[], difficu
   return index.byDifficulty.get(difficulty as Difficulty) || []
 }
 
-function takeQuestions(source: Question[], count: number, usedSet: Set<string>): Question[] {
-  const unused = source.filter((question) => !usedSet.has(question.id))
+function takeQuestions(source: Question[], count: number, usedSet: Set<string>, usedPromptKeys: Set<string>): Question[] {
+  const unused = source.filter(
+    (question) => !usedSet.has(question.id) && !usedPromptKeys.has(normalizePromptKey(question))
+  )
   if (unused.length >= count) {
     return randomize(unused).slice(0, count)
+  }
+
+  const unusedById = source.filter((question) => !usedSet.has(question.id))
+  if (unusedById.length >= count) {
+    return randomize(unusedById).slice(0, count)
   }
 
   return randomize(source).slice(0, count)
 }
 
-function takeWeightedQuestions(source: Question[], count: number, usedSet: Set<string>): Question[] {
-  const unused = source.filter((question) => !usedSet.has(question.id))
-  const effectivePool = unused.length >= count ? unused : source
+function takeWeightedQuestions(source: Question[], count: number, usedSet: Set<string>, usedPromptKeys: Set<string>): Question[] {
+  const unused = source.filter(
+    (question) => !usedSet.has(question.id) && !usedPromptKeys.has(normalizePromptKey(question))
+  )
+  const effectivePool =
+    unused.length >= count
+      ? unused
+      : source.filter((question) => !usedSet.has(question.id))
+  const fallbackPool = effectivePool.length >= count ? effectivePool : source
 
-  const hardPool = randomize(effectivePool.filter((question) => question.difficulty === 'hard'))
-  const mediumPool = randomize(effectivePool.filter((question) => question.difficulty === 'medium'))
-  const easyPool = randomize(effectivePool.filter((question) => question.difficulty === 'easy'))
+  const hardPool = randomize(fallbackPool.filter((question) => question.difficulty === 'hard'))
+  const mediumPool = randomize(fallbackPool.filter((question) => question.difficulty === 'medium'))
+  const easyPool = randomize(fallbackPool.filter((question) => question.difficulty === 'easy'))
 
   const hardCount = Math.min(Math.ceil(count * 0.5), hardPool.length)
   const mediumCount = Math.min(Math.ceil(count * 0.35), mediumPool.length)
@@ -111,7 +142,7 @@ function takeWeightedQuestions(source: Question[], count: number, usedSet: Set<s
 
   if (selected.length < count) {
     const selectedIds = new Set(selected.map((question) => question.id))
-    const remaining = randomize(effectivePool.filter((question) => !selectedIds.has(question.id)))
+    const remaining = randomize(fallbackPool.filter((question) => !selectedIds.has(question.id)))
     selected.push(...remaining.slice(0, count - selected.length))
   }
 
@@ -127,17 +158,18 @@ export function getQuestionsForRound(
 ): Question[] {
   const usedSet = new Set(usedIds || [])
   const index = type === 'true-false' ? trueFalseIndex : standardIndex
+  const usedPromptKeys = getUsedPromptKeys(index, usedIds || [])
   const scopedQuestions = getScopedQuestions(index, type === 'true-false' ? undefined : categories, difficulty)
 
   if (type === 'true-false') {
-    return takeQuestions(scopedQuestions, count, usedSet)
+    return takeQuestions(scopedQuestions, count, usedSet, usedPromptKeys)
   }
 
   if (difficulty) {
-    return takeQuestions(scopedQuestions, count, usedSet)
+    return takeQuestions(scopedQuestions, count, usedSet, usedPromptKeys)
   }
 
-  return takeWeightedQuestions(scopedQuestions, count, usedSet)
+  return takeWeightedQuestions(scopedQuestions, count, usedSet, usedPromptKeys)
 }
 
 export function getQuestionBankStats() {

@@ -3,11 +3,13 @@ import { PLAYER_COLORS, QUESTION_CATEGORIES, ROUND_CONFIGS } from './game-state'
 import {
   acquireRoomLock,
   deleteStoredRoom,
+  getQuestionHistory,
   getRoomPresence,
   getStoredRoom,
   listStoredRooms,
   releaseRoomLock,
   setPlayerPresence,
+  setQuestionHistory,
   setStoredRoom,
 } from './storage'
 
@@ -158,7 +160,11 @@ export async function getPublicRoomState(roomId: string) {
   }
 }
 
-export async function createRoom(hostName: string, usedQuestionIds: string[] = []): Promise<{ room: Room; playerId: string; playerToken: string }> {
+export async function createRoom(
+  hostName: string,
+  historyOwnerId: string | null,
+  usedQuestionIds: string[] = []
+): Promise<{ room: Room; playerId: string; playerToken: string }> {
   const roomId = await generateUniqueRoomId()
   const playerId = crypto.randomUUID()
   const playerToken = generatePlayerToken()
@@ -184,6 +190,7 @@ export async function createRoom(hostName: string, usedQuestionIds: string[] = [
   const room: Room = {
     id: roomId,
     hostId: playerId,
+    historyOwnerId,
     players: [hostPlayer],
     maxPlayers: 20,
     state: 'waiting',
@@ -216,6 +223,9 @@ export async function createRoom(hostName: string, usedQuestionIds: string[] = [
 
   await setStoredRoom(room)
   await setPlayerPresence(roomId, playerId, now)
+  if (historyOwnerId) {
+    await setQuestionHistory(historyOwnerId, usedQuestionIds)
+  }
   return { room, playerId, playerToken }
 }
 
@@ -270,6 +280,9 @@ export async function getRoom(roomId: string): Promise<Room | null> {
 
 export async function saveRoom(room: Room): Promise<void> {
   await setStoredRoom(room)
+  if (room.historyOwnerId) {
+    await setQuestionHistory(room.historyOwnerId, room.usedQuestionIds)
+  }
 }
 
 export async function listRooms(): Promise<{ id: string; playerCount: number; maxPlayers: number; state: GamePhase; hostName: string }[]> {
@@ -487,4 +500,9 @@ export async function cleanupOldRooms(): Promise<void> {
       .filter((room) => room.createdAt < twoHoursAgo)
       .map((room) => deleteStoredRoom(room.id))
   )
+}
+
+export async function getPersistedQuestionHistory(historyOwnerId: string | null): Promise<string[]> {
+  if (!historyOwnerId) return []
+  return getQuestionHistory(historyOwnerId)
 }

@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import { useGameStore } from '@/lib/use-game-store'
 import { useGame } from '@/lib/use-game'
-import { loadStoredQuestionHistory, loadStoredSession } from '@/lib/client-session'
+import { ensureHistoryOwnerId, loadStoredQuestionHistory, loadStoredSession } from '@/lib/client-session'
 import { MainMenu } from '@/components/game/MainMenu'
 import { WaitingRoom } from '@/components/game/WaitingRoom'
 import { GameHUD } from '@/components/game/GameHUD'
@@ -72,6 +72,7 @@ function HomeContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             playerName: name,
+            historyOwnerId: ensureHistoryOwnerId(),
             usedQuestionIds: loadStoredQuestionHistory(),
           }),
         })

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { buildClientState, createRoom, listRooms, cleanupOldRooms, normalizePlayerName } from '@/lib/room-manager'
+import { buildClientState, createRoom, listRooms, cleanupOldRooms, normalizePlayerName, getPersistedQuestionHistory } from '@/lib/room-manager'
 import { createRoomSchema } from '@/lib/api-schemas'
 import { apiError } from '@/lib/api-response'
 import { auditLog } from '@/lib/audit'
@@ -26,14 +26,18 @@ export async function POST(request: Request) {
     return apiError('Dados invalidos', 400, rateLimit.headers)
   }
 
-  const { playerName, usedQuestionIds } = parsed.data
+  const { playerName, historyOwnerId, usedQuestionIds } = parsed.data
 
   const normalizedName = normalizePlayerName(playerName)
   if (!normalizedName) {
     return apiError('Nome do jogador deve ter entre 2 e 15 caracteres', 400, rateLimit.headers)
   }
 
-  const { room, playerId, playerToken } = await createRoom(normalizedName, sanitizeUsedQuestionIds(usedQuestionIds))
+  const clientHistory = sanitizeUsedQuestionIds(usedQuestionIds)
+  const serverHistory = await getPersistedQuestionHistory(historyOwnerId || null)
+  const mergedHistory = sanitizeUsedQuestionIds([...serverHistory, ...clientHistory])
+
+  const { room, playerId, playerToken } = await createRoom(normalizedName, historyOwnerId || null, mergedHistory)
   await publishRoomEvent(room.id, 'room-created', { state: buildClientState(room) })
   auditLog({
     event: 'room_created',

@@ -3,6 +3,7 @@ const STORAGE_KEYS = {
   playerId: 'brainshow_playerId',
   playerName: 'brainshow_playerName',
   playerToken: 'brainshow_playerToken',
+  historyOwnerId: 'brainshow_historyOwnerId',
   usedQuestionIds: 'brainshow_usedQuestionIds',
 } as const
 
@@ -76,4 +77,17 @@ export function appendStoredQuestionHistory(questionId: string): void {
 
   const nextHistory = [...loadStoredQuestionHistory(), questionId]
   saveStoredQuestionHistory(nextHistory)
+}
+
+export function ensureHistoryOwnerId(): string {
+  if (typeof window === 'undefined') {
+    return crypto.randomUUID()
+  }
+
+  const existing = localStorage.getItem(STORAGE_KEYS.historyOwnerId)
+  if (existing) return existing
+
+  const nextId = crypto.randomUUID()
+  localStorage.setItem(STORAGE_KEYS.historyOwnerId, nextId)
+  return nextId
 }
