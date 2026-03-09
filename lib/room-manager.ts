@@ -234,13 +234,13 @@ export async function joinRoom(roomId: string, playerName: string): Promise<{ pl
     const room = await getStoredRoom(roomId)
     if (!room) return null
     if (room.players.length >= room.maxPlayers) return null
-    if (room.state !== 'waiting') return null
     if (room.players.some((player) => player.name.toLowerCase() === playerName.toLowerCase())) return null
 
     const playerId = crypto.randomUUID()
     const playerToken = generatePlayerToken()
     const colorIndex = room.players.length % PLAYER_COLORS.length
     const now = Date.now()
+    const isLiveGame = room.state !== 'waiting' && room.state !== 'finished'
 
     const player: Player = {
       id: playerId,
@@ -248,9 +248,9 @@ export async function joinRoom(roomId: string, playerName: string): Promise<{ pl
       color: PLAYER_COLORS[colorIndex],
       score: 0,
       sabotages: createPlayerSabotages(),
-      isReady: false,
+      isReady: isLiveGame,
       isHost: false,
-      isEliminated: false,
+      isEliminated: isLiveGame,
       activeSabotageEffect: null,
       streak: 0,
       lastAnswerCorrect: null,
@@ -261,7 +261,9 @@ export async function joinRoom(roomId: string, playerName: string): Promise<{ pl
 
     room.players.push(player)
     room.playerTokens[playerId] = playerToken
-    room.hostMessage = `${playerName} entrou na sala!`
+    room.hostMessage = isLiveGame
+      ? `${playerName} entrou! Vai participar a partir da proxima rodada.`
+      : `${playerName} entrou na sala!`
     room.hostAnimation = 'point'
 
     await setStoredRoom(room)

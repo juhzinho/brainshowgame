@@ -21,11 +21,10 @@ export default function JoinPage({ params }: { params: Promise<{ roomId: string 
         const res = await fetch(`/api/rooms/${roomId}`)
         if (res.ok) {
           const data = await res.json()
-          const host = data.players?.find((p: { isHost: boolean }) => p.isHost)
           setRoomInfo({
-            hostName: host?.name || 'Desconhecido',
-            playerCount: data.players?.length || 0,
-            maxPlayers: 20,
+            hostName: data.hostName || 'Desconhecido',
+            playerCount: typeof data.playerCount === 'number' ? data.playerCount : 0,
+            maxPlayers: typeof data.maxPlayers === 'number' ? data.maxPlayers : 20,
           })
         } else {
           setError('Sala nao encontrada')

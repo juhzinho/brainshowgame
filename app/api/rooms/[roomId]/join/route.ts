@@ -34,9 +34,6 @@ export async function POST(
   if (!room) {
     return apiError('Sala nao encontrada. Verifique o codigo e tente novamente.', 404, rateLimit.headers)
   }
-  if (room.state !== 'waiting') {
-    return apiError('Esta sala ja esta em jogo. Aguarde a proxima partida.', 400, rateLimit.headers)
-  }
   if (room.players.length >= room.maxPlayers) {
     return apiError('Sala cheia. Maximo de 20 jogadores.', 400, rateLimit.headers)
   }
