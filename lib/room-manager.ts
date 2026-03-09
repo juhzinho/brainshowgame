@@ -185,6 +185,7 @@ export async function createRoom(
     betAmount: 0,
     connected: true,
     lastActiveAt: now,
+    joinedInProgress: false,
   }
 
   const room: Room = {
@@ -257,6 +258,7 @@ export async function joinRoom(roomId: string, playerName: string): Promise<{ pl
       betAmount: 0,
       connected: true,
       lastActiveAt: now,
+      joinedInProgress: isLiveGame,
     }
 
     room.players.push(player)

@@ -49,6 +49,7 @@ export interface Player {
   betAmount: number
   connected: boolean
   lastActiveAt?: number
+  joinedInProgress?: boolean
 }
 
 export interface Question {

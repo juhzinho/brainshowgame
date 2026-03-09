@@ -60,6 +60,7 @@ function setupRound(room: Room) {
 
   room.players.forEach((player) => {
     player.isEliminated = false
+    player.joinedInProgress = false
   })
 
   room.roundQuestions = getQuestionsForRound(

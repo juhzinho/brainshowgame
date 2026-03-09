@@ -154,6 +154,16 @@ export function GameHUD({ onAnswer, onSabotage, onStealVote, onCounterAttack, on
         </div>
       )}
 
+      {myPlayer?.joinedInProgress && myPlayer.isEliminated && (
+        <div className="absolute top-40 left-1/2 z-10 w-[calc(100%-1.5rem)] max-w-lg -translate-x-1/2 sm:top-28 sm:w-auto">
+          <div className="bg-[#0d1117]/92 backdrop-blur-xl border border-[#4da8da]/40 rounded-xl px-4 py-2 sm:px-6 sm:py-3 text-center shadow-[0_0_24px_rgba(77,168,218,0.2)]">
+            <p className="text-[#7ed5ff] font-sans text-xs leading-relaxed sm:text-sm">
+              Voce entrou com a partida em andamento. Vai jogar a partir da proxima rodada.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Round Announcement Overlay */}
       {showRoundAnnouncement && roundType && (
         <RoundAnnouncement roundType={roundType} currentRound={currentRound} />
